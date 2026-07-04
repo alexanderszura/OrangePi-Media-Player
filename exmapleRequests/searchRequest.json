@@ -1,0 +1,26 @@
+[
+   {
+      "adult":false,
+      "backdrop_path":"/rAOjnEFTuNysY7bot8zonhImGMh.jpg",
+      "id":1402,
+      "name":"The Walking Dead",
+      "original_name":"The Walking Dead",
+      "overview":"Sheriff's deputy Rick Grimes awakens from a coma to find a post-apocalyptic world dominated by flesh-eating zombies. He sets out to find his family and encounters many other survivors along the way.",
+      "poster_path":"/aN29llVoCFtBTwDZFtqdD9d8dHb.jpg",
+      "media_type":"tv",
+      "original_language":"en",
+      "genre_ids":[
+         10759,
+         18,
+         10765
+      ],
+      "popularity":107.5294,
+      "first_air_date":"2010-10-31",
+      "softcore":false,
+      "vote_average":8.086,
+      "vote_count":17929,
+      "origin_country":[
+         "US"
+      ]
+   }
+]
