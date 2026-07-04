@@ -4,7 +4,13 @@ from Title import MediaType, Title, QualityType
 from urllib.parse import quote
 
 PUBLIC_KEY = "54e00466a09676df57ba51c4ca30b1a6"
-SEARCH_URL = "https://api.themoviedb.org/3/search/multi"
+
+MOVIE_INFO_BASE = "https://api.themoviedb.org/3"
+
+SEARCH_ENDPOINT = "search/multi"
+INFORMATION_ENDPOINT = "{type}/{id}"
+SEASON_ENDPOINT = "tv/{id}/season/{season}"
+
 IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w342"
 SUPPORTED_MEDIA_TYPES = {"movie", "tv"}
 
@@ -13,15 +19,15 @@ PROXY_HEADER = {
     "Referer": "https://vidvault.ru/"
 }
 
+def getAPIURL(endpoint: str):
+    return f"{MOVIE_INFO_BASE}/{endpoint}?api_key={PUBLIC_KEY}&language=en-US"
 
 def search(text: str) -> list[Title]:
 
     response = requests.get(
-        SEARCH_URL,
+        getAPIURL(SEARCH_ENDPOINT),
         params={
-            "api_key": PUBLIC_KEY,
             "query": text,
-            "language": "en-US",
             "page": 1,
         },
         timeout=10,
@@ -40,6 +46,7 @@ def search(text: str) -> list[Title]:
 
 def _title_from_result(item: dict[str, Any]) -> Title | None:
     media_type = item.get("media_type")
+
     if media_type == "movie":
         name = item.get("title")
         release_date = item.get("release_date")
@@ -131,8 +138,23 @@ def downloadFile(url, filename, progress_callback=None):
                 if progress_callback:
                     progress_callback(downloaded, total_size)
 
+def getTitleInformation(title: Title) -> dict:
+    r = requests.get(getAPIURL(INFORMATION_ENDPOINT.format(type=title.type.value, id=title.id)))
+
+    r.raise_for_status()
+
+    return r.json()
+
+def getSeasonInformation(title: Title, season: int) -> dict:
+    r = requests.get(getAPIURL(SEASON_ENDPOINT.format(id=title.id, season=season)))
+
+    r.raise_for_status()
+
+    return r.json()
+
 if __name__ == "__main__":
-    for media_title in search("The walking"):
-        print(media_title.display_text)
-        downloadTitle(media_title, episode=2, season=3, quality=QualityType.LOWEST)
-        break
+    best = search("The walking")[0]
+
+    print(getSeasonInformation(best, 1))
+
+    # downloadTitle(best, episode=2, season=3, quality=QualityType.LOWEST)
