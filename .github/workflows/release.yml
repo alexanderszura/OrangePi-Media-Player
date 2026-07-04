@@ -1,0 +1,96 @@
+name: Release Tauri App
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: Build and Release
+    
+    # Required for the action to create a GitHub Release
+    permissions:
+      contents: write 
+      
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin' # Apple Silicon (M1/M2/M3)
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'  # Intel Macs
+          - platform: 'ubuntu-22.04'
+            args: ''                              # Standard x86_64 Linux
+          # You can also add your ubuntu-22.04-arm back here if you are using self-hosted runners!
+          - platform: 'windows-latest'
+            args: ''                              # Windows x86_64
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Pigeon/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # This specifically adds the Mac architectures only when running on a Mac runner
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install Linux dependencies
+        # This step ONLY runs when the matrix is currently on the Ubuntu runner
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils
+
+      - name: Install npm packages
+        working-directory: Pigeon
+        run: npm ci
+
+      - name: Create Rust secrets
+        # Windows uses Powershell by default, so we force bash for this cat command
+        shell: bash 
+        run: |
+          cat > Pigeon/src-tauri/src/secrets.rs <<'EOF'
+          ${{ secrets.RUST_SECRETS }}
+          EOF
+
+      - name: Create TypeScript secrets
+        shell: bash
+        run: |
+          cat > Pigeon/src/secrets.ts <<'EOF'
+          ${{ secrets.TS_SECRETS }}
+          EOF
+
+      - name: Build and Release Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: Pigeon 
+          tagName: ${{ github.ref_name }} 
+          releaseName: "Release ${{ github.ref_name }}"
+          releaseBody: "Automated release built via GitHub Actions."
+          releaseDraft: false
+          prerelease: false
+          
+          # This passes the specific target arguments (like Apple Silicon vs Intel) to the Tauri CLI
+          args: ${{ matrix.args }}

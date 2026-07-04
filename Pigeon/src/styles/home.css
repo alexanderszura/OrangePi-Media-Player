@@ -1,0 +1,109 @@
+.home-view {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Signature element: a slow-breathing signal beacon behind the
+   wordmark — a nod to "the freedom device" quietly broadcasting. */
+.home-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 640px;
+  height: 640px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-glow) 0%, rgba(255, 62, 120, 0.12) 45%, transparent 70%);
+  filter: blur(10px);
+  animation: beacon-breathe 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes beacon-breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(0.92); opacity: 0.7; }
+  50% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+}
+
+.home-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 18px;
+}
+
+.home-title {
+  font-size: clamp(3.5rem, 9vw, 6rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, var(--text) 30%, var(--accent-soft) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: fade-in-up 0.7s ease both;
+}
+
+.home-tagline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  animation: fade-in-up 0.7s ease both;
+  animation-delay: 0.08s;
+}
+
+.home-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 22px;
+  animation: fade-in-up 0.7s ease both;
+  animation-delay: 0.16s;
+}
+
+.home-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 30px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text);
+  /* transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease; */
+}
+
+.home-button svg {
+  font-size: 1.05em;
+}
+
+.home-button:hover,
+.home-button:focus-visible {
+  transform: translateY(-2px);
+}
+
+.home-button--primary {
+  border-color: rgba(255, 157, 61, 0.5);
+  background: linear-gradient(135deg, rgba(255, 157, 61, 0.18), rgba(255, 157, 61, 0.05));
+}
+
+.home-button--primary:hover,
+.home-button--primary:focus-visible {
+  box-shadow: var(--shadow-glow-accent);
+  border-color: var(--accent);
+}
+
+.home-button--secondary:hover,
+.home-button--secondary:focus-visible {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}

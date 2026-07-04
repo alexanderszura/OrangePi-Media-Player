@@ -1,0 +1,27 @@
+.notfound-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.notfound-view h1 {
+  font-size: 2rem;
+}
+
+.notfound-view a {
+  margin-top: 8px;
+  color: var(--accent-soft);
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-bottom: 1px solid transparent;
+  /* transition: border-color 0.15s ease; */
+}
+
+.notfound-view a:hover,
+.notfound-view a:focus-visible {
+  border-color: var(--accent-soft);
+}
