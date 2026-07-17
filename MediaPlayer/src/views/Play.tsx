@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window"; 
 
 export default function Play() {
     const { id, season, episode } = useParams();
@@ -15,6 +16,8 @@ export default function Play() {
     const [ready, setReady] = useState(false);
 
     const started = useRef(false);
+
+    const videoRef = useRef<HTMLVideoElement | null>(null); 
 
     let unlistenProgress: (() => void) | undefined;
     let unlistenComplete: (() => void) | undefined;
@@ -99,6 +102,14 @@ export default function Play() {
         };
     }, [id, season, episode]);
 
+    useEffect(() => {
+        if (ready && videoRef.current) {
+            videoRef.current.requestFullscreen().catch((err) => {
+                console.log("Browser element fullscreen blocked, relying on Tauri window:", err);
+            });
+        }
+    }, [ready]);
+
 
     if (!filename) {
         return <h1>Loading movie...</h1>;
@@ -117,6 +128,7 @@ export default function Play() {
 
     return (
         <video
+            ref={videoRef}
             src={videoSrc ?? undefined}
             controls
             autoPlay
