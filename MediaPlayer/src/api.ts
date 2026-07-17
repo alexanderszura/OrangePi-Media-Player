@@ -100,6 +100,13 @@ export async function fetchTitleInfo(
   return toMediaDetails(response);
 }
 
+export function imagePath(path: string | undefined | null, nullValue="noImage.jpg"): string {
+  if (!path) {
+    return nullValue;
+  }
+
+  return `https://image.tmdb.org/t/p/w500${path}`;
+}
 
 // ============================================================
 // Season Details
@@ -166,8 +173,8 @@ interface DownloadProxyRequest {
 export async function fetchAvailableDownloads(
   id: number,
   mediaType: "movie" | "tv",
-  episode?: number,
-  season?: number,
+  season?: number | string,
+  episode?: number | string,
 ): Promise<AvailableDownloads> {
   const token = await refreshToken();
 
@@ -177,11 +184,11 @@ export async function fetchAvailableDownloads(
   };
 
   if (episode !== undefined) {
-    body.episode = episode;
+    body.episode = Number(episode);
   }
 
   if (season !== undefined) {
-    body.season = season;
+    body.season = Number(season);
   }
 
   const response =

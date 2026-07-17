@@ -56,7 +56,7 @@ export interface MediaSearchResult {
   backdrop_path?: string | null;
   poster_path?: string | null;
   overview?: string;
-  popularity?: number;
+  vote_average?: number;
 
   title?: string;
   release_date?: string;
@@ -78,7 +78,7 @@ export function toMediaSearchResult(
     backdrop_path: result.backdrop_path,
     poster_path: result.poster_path,
     overview: result.overview,
-    popularity: result.popularity,
+    vote_average: result.vote_average,
 
     title: result.title ?? result.name,
     release_date: result.release_date ?? result.first_air_date,
@@ -114,9 +114,10 @@ export interface TvDetailsResponse {
   id: number;
   name: string;
   overview: string;
+  poster_path?: string | null;
   backdrop_path?: string | null;
   first_air_date?: string | null;
-  popularity: number;
+  vote_average: number;
   genres: Genre[];
   seasons: Season[];
 }
@@ -125,9 +126,10 @@ export interface MovieDetailsResponse {
   id: number;
   title: string;
   overview: string;
+  poster_path?: string | null;
   backdrop_path?: string | null;
   release_date?: string | null;
-  popularity: number;
+  vote_average: number;
   runtime?: number | null;
   genres: Genre[];
 }
@@ -140,9 +142,10 @@ export interface MediaDetails {
   id: number;
   title: string;
   overview: string;
+  poster_path?: string | null;
   backdrop_path?: string | null;
   release_date?: string | null;
-  popularity: number;
+  vote_average: number;
   genres: Genre[];
   runtime?: number | null;
   seasons?: Season[];
@@ -157,9 +160,10 @@ export function toMediaDetails(
       id: response.id,
       title: response.title,
       overview: response.overview,
+      poster_path: response.poster_path,
       backdrop_path: response.backdrop_path,
       release_date: response.release_date,
-      popularity: response.popularity,
+      vote_average: response.vote_average,
       genres: response.genres,
       runtime: response.runtime,
     };
@@ -172,7 +176,7 @@ export function toMediaDetails(
     overview: response.overview,
     backdrop_path: response.backdrop_path,
     release_date: response.first_air_date,
-    popularity: response.popularity,
+    vote_average: response.vote_average,
     genres: response.genres,
     seasons: response.seasons,
   };

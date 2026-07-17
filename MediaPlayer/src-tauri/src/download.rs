@@ -4,7 +4,8 @@ use tokio::{
     fs::File,
     io::AsyncWriteExt,
 };
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
+use urlencoding::encode;
 
 
 #[derive(serde::Serialize, Clone)]
@@ -19,12 +20,32 @@ pub async fn download_file(
     app: AppHandle,
     url: String,
     filename: String,
+    folder: String,
 ) -> Result<(), String> {
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = download(app, url, filename, folder).await {
+            eprintln!("Download failed: {}", e);
+        }
+    });
 
+    Ok(())
+}
+
+pub async fn download(
+    app: AppHandle,
+    url: String,
+    filename: String,
+    folder: String,
+) -> Result<(), String> {
     let client = Client::new();
 
+    let final_url = format!(
+        "https://dl.gemlelispe.workers.dev/{}",
+        encode(&url)
+    );
+
     let response = client
-        .get(url)
+        .get(final_url)
         .header("Referer", "https://vidvault.ru/")
         .send()
         .await
@@ -40,7 +61,18 @@ pub async fn download_file(
 
     let mut downloaded = 0u64;
 
-    let mut file = File::create(&filename)
+    let app_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
+
+    tokio::fs::create_dir_all(&app_dir)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let filepath = std::path::PathBuf::from(folder).join(filename);
+
+    let mut file = File::create(&filepath)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -72,6 +104,15 @@ pub async fn download_file(
         .map_err(|e| e.to_string())?;
     }
 
+    let filepath = filepath
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
+
+    app.emit(
+        "download-complete",
+        filepath.to_string_lossy().to_string()
+    )
+    .map_err(|e| e.to_string())?;
 
     Ok(())
 }
