@@ -79,6 +79,8 @@ pub async fn download(
 
     let mut stream = response.bytes_stream();
 
+    let mut started = false;
+    
 
     while let Some(chunk) = stream.next().await {
 
@@ -102,6 +104,16 @@ pub async fn download(
             },
         )
         .map_err(|e| e.to_string())?;
+
+        // Wait for mp4 header to fully download
+        if (downloaded > 5_000_000 && !started) {
+            started = true;
+            app.emit(
+                "download-started",
+                filepath.to_string_lossy().to_string()
+            )
+            .map_err(|e| e.to_string())?;
+        }
     }
 
     let filepath = filepath

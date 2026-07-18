@@ -175,7 +175,7 @@ export async function fetchAvailableDownloads(
   mediaType: "movie" | "tv",
   season?: number | string,
   episode?: number | string,
-): Promise<AvailableDownloads> {
+): Promise<AvailableDownloads | null> {
   const token = await refreshToken();
 
   const body: DownloadProxyRequest = {

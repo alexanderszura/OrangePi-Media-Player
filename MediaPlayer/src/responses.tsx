@@ -292,7 +292,10 @@ export interface AvailableDownloads {
 
 export function toAvailableDownloads(
   response: AvailableDownloadsResponse,
-): AvailableDownloads {
+): AvailableDownloads | null {
+  if (response.mp4Data == null)
+    return null;
+
   return {
     mp4Formats: response.mp4Data.downloadInfo.data.downloads,
   };

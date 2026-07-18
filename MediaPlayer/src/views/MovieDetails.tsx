@@ -1,25 +1,50 @@
 import { useLoaderData, useNavigate } from "react-router-dom";
 import { imagePath } from "../api";
 import { MediaDetails } from "../responses";
-import { FaCirclePlay } from "react-icons/fa6";
+import { FaArrowLeft, FaCirclePlay } from "react-icons/fa6";
+import "../styles/detail.css";
 
 export default function MovieDetails() {
     const navigate = useNavigate();
-    const titleInfo : MediaDetails = useLoaderData();
+    const titleInfo = useLoaderData() as MediaDetails;
 
     return (
-        <>
-            <h1> {titleInfo.title} </h1>
-            <img src={imagePath(titleInfo.poster_path)} alt={titleInfo.title} />
-            <h3> 
-                Released: {titleInfo.release_date}, 
-                genres: {titleInfo.genres?.map((g) => g.name).join(", ")}, 
-                rating: {Math.round(titleInfo.vote_average * 10) / 10}/10
-            </h3>
-            <p> {titleInfo.overview} </p>
-            <button onClick={() => navigate(`/play/movie/${titleInfo.id}`)}>
-                <FaCirclePlay /> Play
+        <div className="detail-view">
+            <button
+                className="back-button icon-button"
+                onClick={() => navigate(-1)}
+                aria-label="Go back"
+            >
+                <FaArrowLeft />
             </button>
-        </>
+
+            <div className="detail-poster">
+                <img
+                    src={imagePath(titleInfo.poster_path)}
+                    alt={titleInfo.title}
+                />
+            </div>
+
+            <div className="detail-content">
+                <div className="detail-header">
+                    <h1 className="detail-title">{titleInfo.title}</h1>
+                    <div className="detail-meta">
+                        <span>{titleInfo.release_date?.split("-")[0]}</span>
+                        <span>{titleInfo.genres?.map((g) => g.name).join(", ")}</span>
+                        <span>{Math.round(titleInfo.vote_average * 10) / 10}/10</span>
+                    </div>
+                </div>
+
+                <p className="detail-overview">{titleInfo.overview}</p>
+
+                <button
+                    className="play-button"
+                    onClick={() => navigate(`/play/movie/${titleInfo.id}`)}
+                >
+                    <FaCirclePlay />
+                    <span>Play</span>
+                </button>
+            </div>
+        </div>
     );
-}   
+}

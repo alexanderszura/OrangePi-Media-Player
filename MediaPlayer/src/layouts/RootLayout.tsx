@@ -1,17 +1,51 @@
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, NavLink } from "react-router-dom";
+import { FaHouse, FaMagnifyingGlass, FaGear } from "react-icons/fa6";
+import "../styles/theme.css";
+import "../styles/layout.css";
 
 export default function RootLayout() {
   return (
-    <div className="app-container">
-      <nav style={{ display: "flex", gap: "10px", padding: "10px", background: "#000" }}>
-        <Link to="/">Home</Link>
-        <Link to="/Search">Search</Link>
-        <Link to="/Settings">Settings</Link>
+    <div className="app-shell">
+      <nav className="app-nav">
+        <span className="app-nav__brand">
+          Pigeon<span>.</span>
+        </span>
+
+        <div className="app-nav__links">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `app-nav__link${isActive ? " active" : ""}`
+            }
+          >
+            <FaHouse />
+            Home
+          </NavLink>
+          <NavLink
+            to="/search"
+            className={({ isActive }) =>
+              `app-nav__link${isActive ? " active" : ""}`
+            }
+          >
+            <FaMagnifyingGlass />
+            Search
+          </NavLink>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `app-nav__link${isActive ? " active" : ""}`
+            }
+          >
+            <FaGear />
+            Settings
+          </NavLink>
+        </div>
       </nav>
-      
-      <main style={{ padding: "20px" }}>
+
+      <main className="app-main">
         {/* Child routes inject their components here */}
-        <Outlet /> 
+        <Outlet />
       </main>
     </div>
   );

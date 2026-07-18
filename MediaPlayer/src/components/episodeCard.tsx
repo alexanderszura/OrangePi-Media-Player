@@ -2,25 +2,52 @@ import { useNavigate } from "react-router-dom";
 import { imagePath } from "../api";
 import { SeasonEpisode } from "../responses";
 import { FaCirclePlay } from "react-icons/fa6";
+import "../styles/episode-card.css";
 
 interface EpisodeCardProps {
     episode: SeasonEpisode
 }
 
-export function EpisodeCard( { episode }: EpisodeCardProps) {
+export function EpisodeCard({ episode }: EpisodeCardProps) {
   const navigate = useNavigate();
-  
+
   const imageUrl = imagePath(episode.still_path);
+  const playPath = `/play/tv/${episode.show_id}/${episode.season_number}/${episode.episode_number}`;
 
   return (
-    <div className="episode-card">
-        <h2> {episode.episode_number} </h2>
-        <img src={imageUrl} alt={episode.name} />
-        <h3>{episode.name}</h3>
-        <h4> {episode.runtime} </h4>
-        <p>{episode.overview}</p>
-        <button onClick={() => navigate(`/play/tv/${episode.show_id}/${episode.season_number}/${episode.episode_number}`)}>
-            <FaCirclePlay /> Play
+    <div
+      className="episode-card"
+      title={episode.overview}
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate(playPath)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") navigate(playPath);
+      }}
+    >
+        <span className="episode-number">{episode.episode_number}</span>
+
+        <div className="episode-thumb">
+            <img src={imageUrl} alt={episode.name} />
+        </div>
+
+        <div className="episode-info">
+            <h3 className="episode-name">{episode.name}</h3>
+            {episode.runtime ? (
+                <span className="episode-runtime">{episode.runtime} min</span>
+            ) : null}
+        </div>
+
+        <button
+            type="button"
+            className="episode-play-button"
+            aria-label={`Play ${episode.name}`}
+            onClick={(e) => {
+                e.stopPropagation();
+                navigate(playPath);
+            }}
+        >
+            <FaCirclePlay />
         </button>
     </div>
   );

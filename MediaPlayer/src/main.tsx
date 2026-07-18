@@ -11,6 +11,7 @@ import { fetchTitleInfo } from "./api";
 import Play from "./views/Play";
 import { SettingsProvider } from "./SettingsContext";
 import Settings from "./views/Settings";
+import NotAvailable from "./views/NotAvailable";
 
 const router = createBrowserRouter([
   {
@@ -23,6 +24,7 @@ const router = createBrowserRouter([
       { path: "settings", element: <Settings /> },
       { path: "play/tv/:id/:season/:episode", element: <Play />},
       { path: "play/movie/:id", element: <Play />},
+      { path: "notAvailable", element: <NotAvailable />},
       { 
         path: "title/TV/:id",
         element: <TVDetails />,

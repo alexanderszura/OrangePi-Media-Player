@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { fetchAvailableDownloads, fetchTitleInfo } from "../api";
 import { useEffect, useState, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
@@ -19,10 +19,13 @@ export default function Play() {
 
     const videoRef = useRef<HTMLVideoElement | null>(null); 
 
-    let unlistenProgress: (() => void) | undefined;
-    let unlistenComplete: (() => void) | undefined;
+    const navigate = useNavigate();
 
     useEffect(() => {
+        let unlistenProgress: (() => void) | undefined;
+        let unlistenStarted:  (() => void) | undefined;
+        let unlistenComplete: (() => void) | undefined;
+
         if (started.current) return;
         started.current = true;
 
@@ -60,12 +63,14 @@ export default function Play() {
 
 
             // Listen for download complete
+            unlistenStarted = await listen<string>(
+                "download-started",
+                (event) => setVideoSrc(convertFileSrc(event.payload))
+            );
+
             unlistenComplete = await listen<string>(
                 "download-complete",
-                (event) => {
-                    setVideoSrc(convertFileSrc(event.payload));
-                    setReady(true);
-                }
+                (event) => setReady(true)
             );
 
             const downloads = await fetchAvailableDownloads(
@@ -75,6 +80,11 @@ export default function Play() {
                 episode
             );
 
+            if (downloads == null) {
+                await navigate("/NotAvailable");
+                return;
+            }
+
             const mp4 = downloads.mp4Formats;
 
             let url = mp4.find(
@@ -83,7 +93,7 @@ export default function Play() {
 
             if (url == undefined) {
                 if (mp4.length > 0) {
-                    mp4[settings.fallbackStrategy == MediaFallbackStrategy.HIGHEST ? mp4.length - 1 : 0].url;
+                    url = mp4[settings.fallbackStrategy == MediaFallbackStrategy.HIGHEST ? mp4.length - 1 : 0].url;
                 } else return;
             }
 
@@ -100,33 +110,27 @@ export default function Play() {
         // Cleanup listeners
         return () => {
             unlistenProgress?.();
+            unlistenStarted ?.();
             unlistenComplete?.();
         };
-    }, [id, season, episode]);
+    }, [id, season, episode, settings]);
 
     useEffect(() => {
-        if (ready && videoRef.current) {
-            videoRef.current.requestFullscreen().catch((err) => {
-                console.log("Browser element fullscreen blocked, relying on Tauri window:", err);
-            });
-        }
-    }, [ready]);
+        if (!videoSrc || !videoRef.current) return;
 
+        videoRef.current.requestFullscreen().catch((err) => {
+            console.log("Browser element fullscreen blocked, relying on Tauri window:", err);
+        });
+    }, [videoSrc]);
 
-    if (!filename) {
-        return <h1>Loading movie...</h1>;
-    }
-
-    if (progress == 0) {
+    if (!filename || !videoSrc || progress <= 1) {
         return (
-            <>
-                <h1>Loading... {filename}</h1>
-                {/* <progress value={progress} max="100" /> */}
-                {/* <p>{Math.round(progress)}%</p> */}
-            </>
+            <div className="loading-screen">
+                <span className="loading-spinner" />
+                Loading movie...
+            </div>
         );
     }
-
 
     return (
         <video
@@ -134,8 +138,11 @@ export default function Play() {
             src={videoSrc ?? undefined}
             controls
             autoPlay
-            muted
             width="800"
+            // onLoadedMetadata={() => console.log("metadata")}
+            // onCanPlay={() => console.log("can play")}
+            // onCanPlayThrough={() => console.log("can play through")}
+            // onError={(e) => console.log("video error", e.currentTarget.error)}
         >
             Your browser does not support the video tag.
         </video>
