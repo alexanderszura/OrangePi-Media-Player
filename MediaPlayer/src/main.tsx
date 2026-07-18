@@ -9,6 +9,8 @@ import TVDetails from "./views/TVDetails";
 import MovieDetails from "./views/MovieDetails";
 import { fetchTitleInfo } from "./api";
 import Play from "./views/Play";
+import { SettingsProvider } from "./SettingsContext";
+import Settings from "./views/Settings";
 
 const router = createBrowserRouter([
   {
@@ -18,6 +20,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: "search", element: <Search /> },
+      { path: "settings", element: <Settings /> },
       { path: "play/tv/:id/:season/:episode", element: <Play />},
       { path: "play/movie/:id", element: <Play />},
       { 
@@ -43,7 +46,9 @@ const root = document.getElementById("root");
 if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <RouterProvider router={router} />
+      <SettingsProvider>
+        <RouterProvider router={router} />
+      </SettingsProvider>
     </React.StrictMode>
   );
 } else {

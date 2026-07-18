@@ -3,12 +3,12 @@ import { useParams } from "react-router-dom";
 import { fetchAvailableDownloads, fetchTitleInfo } from "../api";
 import { useEffect, useState, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { open } from "@tauri-apps/plugin-dialog";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window"; 
+import { MediaFallbackStrategy, resolutionToNumber, useSettings } from "../SettingsContext";
 
 export default function Play() {
     const { id, season, episode } = useParams();
+    const { settings } = useSettings();
 
     const [filename, setFilename] = useState<string | null>(null);
     const [videoSrc, setVideoSrc] = useState<string | null>(null);
@@ -75,21 +75,23 @@ export default function Play() {
                 episode
             );
 
-            const url =
-                downloads.mp4Formats[
-                    // downloads.mp4Formats.length - 1
-                    0
-                ].url;
+            const mp4 = downloads.mp4Formats;
 
-            const folder = await open({
-                directory: true,
-            });
+            let url = mp4.find(
+                (format) => format.resolution == resolutionToNumber(settings.preferredQuality)
+            )?.url;
+
+            if (url == undefined) {
+                if (mp4.length > 0) {
+                    mp4[settings.fallbackStrategy == MediaFallbackStrategy.HIGHEST ? mp4.length - 1 : 0].url;
+                } else return;
+            }
 
             // Start download but don't wait for it
             invoke("download_file", {
                 url,
                 filename: file,
-                folder: folder
+                folder: settings.savePath
             }).catch(console.error);
         }
 
@@ -115,12 +117,12 @@ export default function Play() {
         return <h1>Loading movie...</h1>;
     }
 
-    if (!ready) {
+    if (progress == 0) {
         return (
             <>
-                <h1>Downloading {filename}</h1>
-                <progress value={progress} max="100" />
-                <p>{Math.round(progress)}%</p>
+                <h1>Loading... {filename}</h1>
+                {/* <progress value={progress} max="100" /> */}
+                {/* <p>{Math.round(progress)}%</p> */}
             </>
         );
     }
