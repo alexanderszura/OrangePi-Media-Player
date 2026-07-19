@@ -1,10 +1,10 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { MediaFallbackStrategy, MediaResolution, useSettings } from "../SettingsContext";
-import { FaFolder, FaChevronDown } from "react-icons/fa6";
+import { FaFolder } from "react-icons/fa6";
 import "../styles/settings.css";
+import TVDropdown from "../components/dropdown";
 
 export default function Settings() {
-
     const { settings, setSavePath, setPreferredQuality, setFallbackStrategy } = useSettings();
 
     return (
@@ -16,6 +16,7 @@ export default function Settings() {
                 <div className="settings-path">
                     <button
                         className="icon-button"
+                        data-autofocus
                         onClick={async () => {
                             const folder = await open({
                                 directory: true,
@@ -36,35 +37,36 @@ export default function Settings() {
 
             <div className="settings-row">
                 <h2>Preferred Resolution</h2>
-                <div className="select-wrapper">
-                    <select
-                        className="select"
-                        value={settings.preferredQuality}
-                        onChange={async (e) => await setPreferredQuality(e.target.value as MediaResolution)}
-                    >
-                        {Object.values(MediaResolution).map((resolution) => (
-                            <option key={resolution} value={resolution}>
-                                {resolution.replace("K", "")}p
-                            </option>
-                        ))}
-                    </select>
-                    <FaChevronDown />
-                </div>
+                <TVDropdown
+                    className="select-dropdown"
+                    value={settings.preferredQuality}
+                    onChange={async (value) => await setPreferredQuality(value)}
+                    options={
+                        Object.values(MediaResolution).map(resolution => ({
+                            label: `${resolution.replace("K", "")}p`,
+                            value: resolution
+                        })) ?? []
+                    }
+                />
             </div>
 
             <div className="settings-row">
                 <h2>Fallback Strategy Resolution</h2>
-                <div className="select-wrapper">
-                    <select
-                        className="select"
-                        value={settings.fallbackStrategy}
-                        onChange={async (e) => await setFallbackStrategy(e.target.value as MediaFallbackStrategy)}
-                    >
-                        <option key={MediaFallbackStrategy.LOWEST} value={MediaFallbackStrategy.LOWEST}>{MediaFallbackStrategy.LOWEST}</option>
-                        <option key={MediaFallbackStrategy.HIGHEST} value={MediaFallbackStrategy.HIGHEST}>{MediaFallbackStrategy.HIGHEST}</option>
-                    </select>
-                    <FaChevronDown />
-                </div>
+                <TVDropdown
+                    className="select-dropdown"
+                    value={settings.fallbackStrategy}
+                    onChange={async (value) => await setFallbackStrategy(value)}
+                    options={[
+                        {
+                            label: "Lowest",
+                            value: MediaFallbackStrategy.LOWEST
+                        },
+                        {
+                            label: "Highest",
+                            value: MediaFallbackStrategy.HIGHEST
+                        }
+                    ]}
+                />
             </div>
         </div>
     );

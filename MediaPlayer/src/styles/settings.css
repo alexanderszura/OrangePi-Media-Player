@@ -13,6 +13,10 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .settings-row h2 {
@@ -37,4 +41,8 @@
   content: "No folder selected";
   color: var(--text-faint);
   font-style: italic;
+}
+
+.select-dropdown {
+  width: 240px;
 }

@@ -1,9 +1,12 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { FaHouse, FaMagnifyingGlass, FaGear } from "react-icons/fa6";
+import { useSpatialNavigation } from "../spatialNavigation";
 import "../styles/theme.css";
 import "../styles/layout.css";
 
 export default function RootLayout() {
+  useSpatialNavigation();
+
   return (
     <div className="app-shell">
       <nav className="app-nav">

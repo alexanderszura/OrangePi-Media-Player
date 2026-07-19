@@ -3,13 +3,14 @@ import { fetchSeasonInfo, imagePath } from "../api";
 import { MediaDetails, SeasonDetails } from "../responses";
 import { useEffect, useState } from "react";
 import { EpisodeCard } from "../components/episodeCard";
-import { FaArrowLeft, FaChevronDown } from "react-icons/fa6";
+import { FaArrowLeft } from "react-icons/fa6";
 import "../styles/detail.css";
+import TVDropdown from "../components/dropdown";
 
 export default function TVDetails() {
     const titleInfo = useLoaderData() as MediaDetails;
     const navigate = useNavigate();
-
+    
     const [season, setSeason] = useState<SeasonDetails | null>(null);
     const [seasonNumber, setSeasonNumber] = useState(1);
 
@@ -24,6 +25,8 @@ export default function TVDetails() {
 
     const seasonCount = titleInfo.seasons?.length ?? 0;
 
+    const image = imagePath(titleInfo.poster_path ?? titleInfo.backdrop_path);
+
     return (
         <div className="detail-view">
             <button
@@ -36,7 +39,7 @@ export default function TVDetails() {
 
             <div className="detail-poster">
                 <img
-                    src={imagePath(titleInfo.poster_path)}
+                    src={image}
                     alt={titleInfo.title}
                 />
             </div>
@@ -56,22 +59,17 @@ export default function TVDetails() {
                 <div className="episodes-header">
                     <h2>Episodes</h2>
 
-                    <div className="select-wrapper">
-                        <select
-                            className="select"
-                            value={seasonNumber}
-                            onChange={(event) => {
-                                setSeasonNumber(Number(event.target.value));
-                            }}
-                        >
-                            {titleInfo.seasons?.map((s) => (
-                                <option key={s.id} value={s.season_number}>
-                                    {s.name}
-                                </option>
-                            ))}
-                        </select>
-                        <FaChevronDown />
-                    </div>
+                    <TVDropdown
+                        // className="select"
+                        value={seasonNumber}
+                        onChange={setSeasonNumber}
+                        options={
+                            titleInfo.seasons?.map(season => ({
+                                label: season.name,
+                                value: season.season_number
+                            })) ?? []
+                        }
+                    />
                 </div>
 
                 <div className="episodes-container">

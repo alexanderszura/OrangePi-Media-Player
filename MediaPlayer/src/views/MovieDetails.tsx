@@ -39,6 +39,7 @@ export default function MovieDetails() {
 
                 <button
                     className="play-button"
+                    data-autofocus
                     onClick={() => navigate(`/play/movie/${titleInfo.id}`)}
                 >
                     <FaCirclePlay />

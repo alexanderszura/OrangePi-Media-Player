@@ -74,6 +74,13 @@
   border-color: var(--border-strong);
 }
 
+.key:focus-visible {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glow-accent);
+  transform: scale(1.05);
+}
+
 .key:active {
   transform: scale(0.95);
 }

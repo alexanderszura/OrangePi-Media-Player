@@ -60,6 +60,13 @@
   background: var(--surface);
 }
 
+.app-nav__link:focus-visible {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-glow-accent);
+}
+
 .app-nav__link.active {
   color: var(--accent-soft);
   background: rgba(255, 157, 61, 0.1);

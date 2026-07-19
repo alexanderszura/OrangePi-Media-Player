@@ -11,12 +11,13 @@ export default function Home() {
             <div className="home-glow" aria-hidden="true" />
 
             <div className="home-content">
-                <h1 className="home-title">Pigeon</h1>
+                <h1 className="home-title">The Pigeon</h1>
                 <p className="home-tagline">The freedom device</p>
 
                 <div className="home-actions">
                     <button
                         className="home-button home-button--primary"
+                        data-autofocus
                         onClick={async () => await navigate("/search")}
                     >
                         <FaSearch />

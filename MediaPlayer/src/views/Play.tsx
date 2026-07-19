@@ -22,12 +22,12 @@ export default function Play() {
     const navigate = useNavigate();
 
     useEffect(() => {
+        if (started.current) return;
+        started.current = true;
+
         let unlistenProgress: (() => void) | undefined;
         let unlistenStarted:  (() => void) | undefined;
         let unlistenComplete: (() => void) | undefined;
-
-        if (started.current) return;
-        started.current = true;
 
         async function start() {
             if (!id) return;
@@ -61,13 +61,13 @@ export default function Play() {
                 }
             });
 
-
-            // Listen for download complete
+            // Listen for download started
             unlistenStarted = await listen<string>(
                 "download-started",
                 (event) => setVideoSrc(convertFileSrc(event.payload))
             );
 
+            // Listen for download complete
             unlistenComplete = await listen<string>(
                 "download-complete",
                 (event) => setReady(true)
@@ -123,6 +123,7 @@ export default function Play() {
         });
     }, [videoSrc]);
 
+
     if (!filename || !videoSrc || progress <= 1) {
         return (
             <div className="loading-screen">
@@ -142,7 +143,7 @@ export default function Play() {
             // onLoadedMetadata={() => console.log("metadata")}
             // onCanPlay={() => console.log("can play")}
             // onCanPlayThrough={() => console.log("can play through")}
-            // onError={(e) => console.log("video error", e.currentTarget.error)}
+            onError={(e) => console.log("video error", e.currentTarget.error)}
         >
             Your browser does not support the video tag.
         </video>

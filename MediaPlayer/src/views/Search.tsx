@@ -27,6 +27,7 @@ export default function Search() {
                     id="search"
                     className="search-input"
                     type="text"
+                    data-autofocus
                     value={search}
                     autoComplete="off"
                     placeholder="Search TV & Movies"

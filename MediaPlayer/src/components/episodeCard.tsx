@@ -18,12 +18,7 @@ export function EpisodeCard({ episode }: EpisodeCardProps) {
     <div
       className="episode-card"
       title={episode.overview}
-      role="button"
-      tabIndex={0}
       onClick={() => navigate(playPath)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") navigate(playPath);
-      }}
     >
         <span className="episode-number">{episode.episode_number}</span>
 
