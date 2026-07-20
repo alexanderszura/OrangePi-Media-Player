@@ -1,0 +1,58 @@
+name: Build Linux ARM64
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Orange Pi Linux Version
+    runs-on: ubuntu-24.04-arm
+
+    defaults:
+      run:
+        working-directory: MediaPlayer
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: MediaPlayer/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Install npm packages
+        run: npm ci
+
+      - name: Build Tauri application
+        run: npm run tauri build
+
+      - name: Upload Debian package
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrangePi-MediaPlayer-arm64-deb
+          path: MediaPlayer/src-tauri/target/release/bundle/deb/*.deb
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrangePi-MediaPlayer-arm64-appimage
+          path: MediaPlayer/src-tauri/target/release/bundle/appimage/*.AppImage
