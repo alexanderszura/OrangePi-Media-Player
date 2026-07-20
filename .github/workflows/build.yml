@@ -27,6 +27,7 @@ jobs:
             libssl-dev
 
       - name: Install packages
+        working-directory: MediaPlayer
         run: npm install
 
       - name: Build
