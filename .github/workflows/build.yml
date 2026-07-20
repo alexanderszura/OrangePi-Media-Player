@@ -2,33 +2,56 @@ name: Build Linux ARM64
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
+    name: Build Tauri Linux ARM64
     runs-on: ubuntu-22.04
 
-    steps:
-      - uses: actions/checkout@v4
+    defaults:
+      run:
+        working-directory: MediaPlayer
 
-      - uses: dtolnay/rust-toolchain@stable
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: MediaPlayer/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-unknown-linux-gnu
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install dependencies
+      - name: Install Linux dependencies
         run: |
           sudo apt update
           sudo apt install -y \
             gcc-aarch64-linux-gnu \
+            pkg-config \
             libwebkit2gtk-4.1-dev \
-            libssl-dev
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
 
-      - name: Install packages
-        working-directory: MediaPlayer
+      - name: Install npm packages
         run: npm install
 
-      - name: Build
+      - name: Build Tauri app
         run: npm run tauri build -- --target aarch64-unknown-linux-gnu
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: orange-pi-media-player-linux-arm64
+          path: |
+            MediaPlayer/src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb/*.deb
+            MediaPlayer/src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
