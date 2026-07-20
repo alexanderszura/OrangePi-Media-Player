@@ -30,14 +30,15 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Linux dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y \
-            libwebkit2gtk-4.1-dev \
-            libssl-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            patchelf
+          run: |
+            sudo apt update
+            sudo apt install -y \
+              libwebkit2gtk-4.1-dev \
+              libssl-dev \
+              libayatana-appindicator3-dev \
+              librsvg2-dev \
+              patchelf \
+              xdg-utils
 
       - name: Install npm packages
         run: npm ci
