@@ -2032,7 +2032,6 @@ name = "mediaplayer"
 version = "0.1.0"
 dependencies = [
  "futures-util",
- "pub-fields",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -2733,16 +2732,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "pub-fields"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70739dfbe1b67f36bda171ad511ea5d6e4b96baf66e7427661345ab072c12c11"
-dependencies = [
- "quote",
- "syn 2.0.118",
 ]
 
 [[package]]

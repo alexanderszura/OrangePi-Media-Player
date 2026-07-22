@@ -48,7 +48,7 @@
   font-weight: 600;
   color: var(--text-muted);
   border: 1px solid transparent;
-  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  /* transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease; */
 }
 
 .app-nav__link svg {

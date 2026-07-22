@@ -14,7 +14,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  /* transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; */
 }
 
 .media-card__poster:hover,

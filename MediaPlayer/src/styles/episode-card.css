@@ -5,7 +5,7 @@
   padding: 10px 12px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  /* transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease; */
 }
 
 .episode-card:hover {
@@ -74,7 +74,7 @@
   background: rgba(255, 62, 120, 0.08);
   color: var(--play-soft);
   font-size: 1.15rem;
-  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  /* transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; */
 }
 
 .episode-play-button:hover,

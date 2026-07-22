@@ -18,7 +18,7 @@
   font-weight: 600;
   font-size: 0.9rem;
   border-bottom: 1px solid transparent;
-  transition: border-color 0.15s ease;
+  /* transition: border-color 0.15s ease; */
 }
 
 .notfound-view a:hover,

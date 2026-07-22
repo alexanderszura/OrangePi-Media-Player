@@ -8,7 +8,7 @@ export enum MediaResolution {
     k1080 = "K1080",
 }
 
-export function resolutionToNumber(resolution: MediaResolution): number | null {
+export function resolutionToNumber(resolution: MediaResolution): number {
     switch (resolution) {
         case MediaResolution.k360:
             return 360;
@@ -19,8 +19,6 @@ export function resolutionToNumber(resolution: MediaResolution): number | null {
         case MediaResolution.k1080:
             return 1080;
     }
-
-    return null;
 }
 
 export enum MediaFallbackStrategy {
@@ -32,6 +30,7 @@ interface Settings {
     savePath: string | null;
     preferredQuality: MediaResolution;
     fallbackStrategy: MediaFallbackStrategy;
+    maxTitlesPerPage: number;
 }
 
 interface SettingsContextType {
@@ -39,6 +38,7 @@ interface SettingsContextType {
     setSavePath: (path: string) => Promise<void>;
     setPreferredQuality: (quality: MediaResolution) => Promise<void>;
     setFallbackStrategy: (strategy: MediaFallbackStrategy) => Promise<void>;
+    setMaxTitlePerPage: (num: number) => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsContextType | null>(null);
@@ -52,6 +52,7 @@ export function SettingsProvider({
         savePath: null,
         preferredQuality: MediaResolution.k1080,
         fallbackStrategy: MediaFallbackStrategy.HIGHEST,
+        maxTitlesPerPage: 10,
     });
 
     useEffect(() => {
@@ -62,6 +63,7 @@ export function SettingsProvider({
                 savePath: saved.savePath,
                 preferredQuality: saved.preferredQuality,
                 fallbackStrategy: saved.fallbackStrategy,
+                maxTitlesPerPage: saved.maxTitlesPerPage
             });
         }
 
@@ -84,6 +86,7 @@ export function SettingsProvider({
                 savePath: newSettings.savePath,
                 preferredQuality: newSettings.preferredQuality,
                 fallbackStrategy: newSettings.fallbackStrategy,
+                maxTitlesPerPage: newSettings.maxTitlesPerPage
             },
         });
     }
@@ -97,6 +100,9 @@ export function SettingsProvider({
     const setFallbackStrategy = (strategy: MediaFallbackStrategy) =>
         updateSetting("fallbackStrategy", strategy);
 
+    const setMaxTitlePerPage = (num: number) =>
+        updateSetting("maxTitlesPerPage", num);
+
     return (
         <SettingsContext.Provider
             value={{
@@ -104,6 +110,7 @@ export function SettingsProvider({
                 setSavePath,
                 setPreferredQuality,
                 setFallbackStrategy,
+                setMaxTitlePerPage,
             }}
         >
             {children}

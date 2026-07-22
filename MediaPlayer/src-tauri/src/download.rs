@@ -106,7 +106,7 @@ pub async fn download(
         .map_err(|e| e.to_string())?;
 
         // Wait for mp4 header to fully download
-        if (downloaded > 5_000_000 && !started) {
+        if downloaded > 5_000_000 && !started {
             started = true;
             app.emit(
                 "download-started",

@@ -21,6 +21,7 @@ pub struct Settings {
     pub savePath: Option<String>,
     pub preferredQuality: MediaResolution,
     pub fallbackStrategy: MediaFallbackStrategy,
+    pub maxTitlesPerPage: u8,
 }
 
 impl Default for Settings {
@@ -29,6 +30,7 @@ impl Default for Settings {
             savePath: None,
             preferredQuality: MediaResolution::K1080,
             fallbackStrategy: MediaFallbackStrategy::Highest,
+            maxTitlesPerPage: 10
         }
     }
 }

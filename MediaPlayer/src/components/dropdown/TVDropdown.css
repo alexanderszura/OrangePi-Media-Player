@@ -34,7 +34,7 @@
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.18s ease;
+    /* transition: all 0.18s ease; */
 }
 
 .tv-dropdown-button:focus-visible,
@@ -50,7 +50,7 @@
 .tv-dropdown-button .chevron {
     font-size: 0.85em;
     color: var(--text-muted);
-    transition: transform 0.2s ease;
+    /* transition: transform 0.2s ease; */
 }
 
 .tv-dropdown-button .chevron.open {
@@ -96,7 +96,7 @@
     font-weight: 500;
     text-align: left;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    /* transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease; */
 }
 
 .tv-dropdown-menu button.tv-dropdown-item:focus-visible,

@@ -5,7 +5,7 @@ import "../styles/settings.css";
 import TVDropdown from "../components/dropdown";
 
 export default function Settings() {
-    const { settings, setSavePath, setPreferredQuality, setFallbackStrategy } = useSettings();
+    const { settings, setSavePath, setPreferredQuality, setFallbackStrategy, setMaxTitlePerPage } = useSettings();
 
     return (
         <div className="page settings-view">
@@ -66,6 +66,21 @@ export default function Settings() {
                             value: MediaFallbackStrategy.HIGHEST
                         }
                     ]}
+                />
+            </div>
+
+            <div className="settings-row"> 
+                <h2> Max Titles Per Search Page </h2>
+                <input
+                    id="max-titles-input"
+                    className="max-titles-input"
+                    type="number"
+                    step="1"
+                    min="1"
+                    data-autofocus
+                    value={settings.maxTitlesPerPage}
+                    autoComplete="off"
+                    onChange={async (e) => setMaxTitlePerPage(e.target.valueAsNumber)}
                 />
             </div>
         </div>
