@@ -180,3 +180,5 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 /exmapleRequests
+Pigeon/src-tauri/src/secrets.rs
+Pigeon/src/secrets.ts
