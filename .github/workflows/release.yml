@@ -1,0 +1,123 @@
+name: Release Tauri App
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-linux-arm64:
+    name: Build Orange Pi Linux ARM64
+    runs-on: ubuntu-22.04-arm
+
+    defaults:
+      run:
+        working-directory: MediaPlayer
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: MediaPlayer/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils
+
+      - name: Install npm packages
+        run: npm ci
+
+      - name: Build Tauri application
+        run: npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrangePi-MediaPlayer-linux-arm64
+          path: |
+            MediaPlayer/src-tauri/target/release/bundle/deb/*.deb
+            MediaPlayer/src-tauri/target/release/bundle/appimage/*.AppImage
+
+
+  build-windows:
+    name: Build Windows Version
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: MediaPlayer
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: MediaPlayer/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install npm packages
+        run: npm ci
+
+      - name: Build Tauri application
+        run: npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrangePi-MediaPlayer-windows
+          path: |
+            MediaPlayer/src-tauri/target/release/bundle/nsis/*.exe
+            MediaPlayer/src-tauri/target/release/bundle/msi/*.msi
+
+
+  release:
+    name: Create GitHub Release
+    needs:
+      - build-linux-arm64
+      - build-windows
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}

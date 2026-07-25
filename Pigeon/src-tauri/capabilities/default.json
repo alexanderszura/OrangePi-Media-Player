@@ -8,7 +8,8 @@
   "permissions": [
     "core:default",
     "dialog:default",
-    "core:window:allow-set-fullscreen"
+    "core:window:allow-set-fullscreen",
+    "updater:default"
   ],
   "remote": {
     "urls": [
