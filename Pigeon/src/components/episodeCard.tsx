@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { imagePath } from "../api";
+import { mediaImagePath } from "../api";
 import { SeasonEpisode } from "../responses";
 import { FaCirclePlay } from "react-icons/fa6";
 import "../styles/episode-card.css";
@@ -11,7 +11,7 @@ interface EpisodeCardProps {
 export function EpisodeCard({ episode }: EpisodeCardProps) {
   const navigate = useNavigate();
 
-  const imageUrl = imagePath(episode.still_path);
+  const imageUrl = mediaImagePath(episode.still_path);
   const playPath = `/play/tv/${episode.show_id}/${episode.season_number}/${episode.episode_number}`;
 
   return (

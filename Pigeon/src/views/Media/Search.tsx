@@ -1,13 +1,13 @@
 import { useState } from "react";
-import * as response from "../responses";
-import * as API from "../api";
-import { MediaCard } from "../components/mediaCard";
-import Keyboard from "../components/keyboardCard";
-import "../styles/search.css";
-import { useSettings } from "../SettingsContext";
+import "../../styles/search.css";
 import { FaArrowLeftLong, FaArrowRightLong } from "react-icons/fa6";
+import { useSettings } from "../../SettingsContext";
+import * as API from "../../api";
+import * as response from "../../responses.tsx"
+import Keyboard from "../../components/keyboardCard.tsx";
+import { MediaCard } from "../../components/mediaCard.tsx";
 
-export default function Search() {
+export default function MediaSearch() {
     const { settings } = useSettings();
     const [search, setSearch] = useState("");
     const [media, setMedia] = useState<response.MediaSearchResult[]>([]);

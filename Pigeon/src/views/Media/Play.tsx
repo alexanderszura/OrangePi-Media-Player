@@ -1,10 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window"; // Add this for true fullscreen
 import { useNavigate, useParams } from "react-router-dom";
-import { fetchAvailableDownloads, fetchTitleInfo } from "../api";
+import { fetchAvailableDownloads, fetchTitleInfo } from "../../api";
 import { useEffect, useState, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { MediaFallbackStrategy, resolutionToNumber, useSettings } from "../SettingsContext";
+import { MediaFallbackStrategy, resolutionToNumber, useSettings } from "../../SettingsContext";
 
 export default function Play() {
     const { id, season, episode } = useParams();

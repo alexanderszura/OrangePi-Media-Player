@@ -1,11 +1,11 @@
 import { useLoaderData, useNavigate } from "react-router-dom";
-import { fetchSeasonInfo, imagePath } from "../api";
-import { MediaDetails, SeasonDetails } from "../responses";
+import { fetchSeasonInfo, mediaImagePath } from "../../api";
+import { MediaDetails, SeasonDetails } from "../../responses";
 import { useEffect, useState } from "react";
-import { EpisodeCard } from "../components/episodeCard";
+import { EpisodeCard } from "../../components/episodeCard";
 import { FaArrowLeft } from "react-icons/fa6";
-import "../styles/detail.css";
-import TVDropdown from "../components/dropdown";
+import "../../styles/detail.css";
+import TVDropdown from "../../components/dropdown";
 
 export default function TVDetails() {
     const titleInfo = useLoaderData() as MediaDetails;
@@ -25,7 +25,7 @@ export default function TVDetails() {
 
     const seasonCount = titleInfo.seasons?.length ?? 0;
 
-    const image = imagePath(titleInfo.poster_path ?? titleInfo.backdrop_path);
+    const image = mediaImagePath(titleInfo.poster_path ?? titleInfo.backdrop_path);
 
     return (
         <div className="detail-view">

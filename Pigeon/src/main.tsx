@@ -3,15 +3,18 @@ import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import RootLayout from "./layouts/RootLayout";
 import Home from "./views/Home";
-import Search from "./views/Search";
-import NotFound from "./views/NotFound";
-import TVDetails from "./views/TVDetails";
-import MovieDetails from "./views/MovieDetails";
-import { fetchTitleInfo } from "./api";
-import Play from "./views/Play";
 import { SettingsProvider } from "./SettingsContext";
 import Settings from "./views/Settings";
 import NotAvailable from "./views/NotAvailable";
+import GameSearch from "./views/RetroGames/Search";
+import NotFound from "./views/NotFound";
+import MediaSearch from "./views/Media/Search";
+import Play from "./views/Media/Play";
+import TVDetails from "./views/Media/TVDetails";
+import MovieDetails from "./views/Media/MovieDetails";
+import { fetchTitleInfo } from "./api";
+import GameDetails from "./views/RetroGames/GameDetails";
+import { invoke } from "@tauri-apps/api/core";
 
 const router = createBrowserRouter([
   {
@@ -20,10 +23,11 @@ const router = createBrowserRouter([
     errorElement: <NotFound />,  // Catches 404s or rendering crashes
     children: [
       { index: true, element: <Home /> },
-      { path: "search", element: <Search /> },
+      { path: "media-search", element: <MediaSearch /> },
       { path: "settings", element: <Settings /> },
       { path: "play/tv/:id/:season/:episode", element: <Play />},
       { path: "play/movie/:id", element: <Play />},
+      { path: "game-search", element: <GameSearch />},
       { path: "notAvailable", element: <NotAvailable />},
       { 
         path: "title/TV/:id",
@@ -38,6 +42,15 @@ const router = createBrowserRouter([
         loader: async ({ params }) => {
           return await fetchTitleInfo("movie", Number(params.id));
         },
+      },
+      {
+        path: "game/:id",
+        element: <GameDetails />,
+        loader: async ({ params }) => {
+          return await invoke("game_info", {
+            id: Number(params.id)
+          });
+        }
       }
     ],
   },

@@ -1,8 +1,8 @@
 import { useLoaderData, useNavigate } from "react-router-dom";
-import { imagePath } from "../api";
-import { MediaDetails } from "../responses";
+import { mediaImagePath } from "../../api";
+import { MediaDetails } from "../../responses";
 import { FaArrowLeft, FaCirclePlay } from "react-icons/fa6";
-import "../styles/detail.css";
+import "../../styles/detail.css";
 
 export default function MovieDetails() {
     const navigate = useNavigate();
@@ -20,7 +20,7 @@ export default function MovieDetails() {
 
             <div className="detail-poster">
                 <img
-                    src={imagePath(titleInfo.poster_path)}
+                    src={mediaImagePath(titleInfo.poster_path)}
                     alt={titleInfo.title}
                 />
             </div>

@@ -26,13 +26,22 @@ export default function RootLayout() {
             Home
           </NavLink>
           <NavLink
-            to="/search"
+            to="/media-search"
             className={({ isActive }) =>
               `app-nav__link${isActive ? " active" : ""}`
             }
           >
             <FaMagnifyingGlass />
             Search
+          </NavLink>
+          <NavLink
+            to="/game-search"
+            className={({ isActive }) =>
+              `app-nav__link${isActive ? " active" : ""}`
+            }
+          >
+            <FaMagnifyingGlass />
+            Retro Games
           </NavLink>
           <NavLink
             to="/settings"

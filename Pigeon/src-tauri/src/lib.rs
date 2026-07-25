@@ -1,5 +1,7 @@
 mod download;
 mod settings;
+mod emulator;
+mod secrets;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -10,7 +12,12 @@ pub fn run() {
             tauri::generate_handler![
                 download::download_file,
                 settings::get_settings,
-                settings::save_settings
+                settings::save_settings,
+                emulator::get_games,
+                emulator::launch_game,
+                emulator::stop_emulator,
+                emulator::search_games,
+                emulator::game_info
             ]
         )
         .run(

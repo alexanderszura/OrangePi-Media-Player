@@ -310,3 +310,74 @@ export interface TokenResponse {
   t: string;
   e: number;
 }
+
+// ============================================================
+// Emulator
+// ============================================================
+
+export interface GameTokenResponse {
+  access_token: string,
+  expires_in: number,
+  token_type: string
+}
+
+export interface ConsoleInfo {
+  id: number;
+  name: string;
+}
+
+
+// TODO: Test System Performances
+export enum Console {
+  ARCADE = 52,
+  NES = 18,
+  SNES = 19,
+  N64 = 4,
+  GAME_BOY = 33,
+  GAME_BOY_COLOR = 22,
+  GBA = 24,
+  NINTENDO_DS = 20,
+  GAMECUBE = 21,
+  WII = 5,
+
+  MASTER_SYSTEM = 64,
+  GENESIS = 29,
+  SATURN = 32,
+  DREAMCAST = 23,
+
+  PS1 = 7,
+
+  XBOX = 11,
+  XBOX_360 = 12,
+
+  ATARI_2600 = 59,
+  ATARI_7800 = 60,
+}
+
+export interface GameData {
+  id: number;
+  name: string;
+  summary?: string;
+  rating?: number;
+  first_release_date?: number;
+  platforms: ConsoleInfo[];
+  cover?: string;
+}
+
+export enum GameImageType {
+  COVER_SMALL = "cover_small",
+  COVER_BIG = "cover_big",
+  COVER_BIG_2X = "cover_big_2x",
+
+  SCREENSHOT_MEDIUM = "screenshot_med",
+  SCREENSHOT_BIG = "screenshot_big",
+  SCREENSHOT_HUGE = "screenshot_huge",
+
+  THUMB = "thumb",
+  LOGO_MEDIUM = "logo_med",
+  LOGO_BIG = "logo_big",
+
+  MICRO = "micro",
+  HD = "720p",
+  FULL_HD = "1080p"
+}
