@@ -1,0 +1,117 @@
+.download-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 157, 61, 0.4);
+    background: rgba(255, 157, 61, 0.08);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* Hover state only when interactive */
+.download-button:hover:not(:disabled) {
+    background: rgba(255, 157, 61, 0.18);
+    box-shadow: var(--shadow-glow-accent);
+    transform: scale(1.05);
+}
+
+/* Disabled / Unavailable / Downloading state */
+.download-button:disabled {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.3);
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Ensure active progress text stays bright */
+.download-button:disabled .progress-text {
+    opacity: 1;
+}
+
+/* Spinning animation for loading state */
+.spinner {
+    animation: spin 1s linear infinite;
+    font-size: 1.2rem;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.download-progress {
+    width: 28px;
+    height: 28px;
+    transform: rotate(-90deg);
+}
+
+.progress-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.15);
+    stroke-width: 3;
+}
+
+.progress-ring {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 97.39;
+    transition: stroke-dashoffset 0.15s linear;
+}
+
+.progress-text {
+    transform: rotate(90deg);
+    transform-origin: center;
+    fill: var(--text);
+    font-size: 9px;
+    font-weight: 600;
+    text-anchor: middle;
+    dominant-baseline: middle;
+}
+
+.play-button {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(133, 226, 18, 0.4);
+  background: rgba(61, 200, 57, 0.298);
+  
+  /* Fallback to green if --play-soft is undefined */
+  color: var(--play-soft, #85e212); 
+  font-size: 1.15rem;
+  
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Ensure the SVG icon maintains its shape and inherits color */
+.play-button svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: currentColor;
+}
+
+.play-button:hover,
+.play-button:focus-visible {
+  /* Changed from red (255,62,120) to a glowing green */
+  background: rgba(133, 226, 18, 0.25);
+  box-shadow: 0 0 10px rgba(133, 226, 18, 0.4); /* Replaced undefined var */
+  transform: scale(1.06);
+}

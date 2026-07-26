@@ -3,6 +3,9 @@ import { mediaImagePath } from "../../api";
 import { MediaDetails } from "../../responses";
 import { FaArrowLeft, FaCirclePlay } from "react-icons/fa6";
 import "../../styles/detail.css";
+import { IoMdDownload } from "react-icons/io";
+import { invoke } from "@tauri-apps/api/core";
+import { DownloadButton } from "../../components/downloadButton";
 
 export default function MovieDetails() {
     const navigate = useNavigate();
@@ -37,14 +40,7 @@ export default function MovieDetails() {
 
                 <p className="detail-overview">{titleInfo.overview}</p>
 
-                <button
-                    className="play-button"
-                    data-autofocus
-                    onClick={() => navigate(`/play/movie/${titleInfo.id}`)}
-                >
-                    <FaCirclePlay />
-                    <span>Play</span>
-                </button>
+                <DownloadButton type="movie" id={titleInfo.id}/>
             </div>
         </div>
     );

@@ -30,16 +30,13 @@ impl Default for Settings {
             savePath: None,
             preferredQuality: MediaResolution::K1080,
             fallbackStrategy: MediaFallbackStrategy::Highest,
-            maxTitlesPerPage: 10
+            maxTitlesPerPage: 10,
         }
     }
 }
 
 fn settings_path(app: &tauri::AppHandle) -> std::path::PathBuf {
-    app.path()
-        .app_data_dir()
-        .unwrap()
-        .join("settings.json")
+    app.path().app_data_dir().unwrap().join("settings.json")
 }
 
 #[tauri::command]
@@ -54,12 +51,8 @@ pub fn get_settings(app: tauri::AppHandle) -> Settings {
     serde_json::from_str(&data).unwrap_or_default()
 }
 
-
 #[tauri::command]
-pub fn save_settings(
-    app: tauri::AppHandle,
-    settings: Settings
-) {
+pub fn save_settings(app: tauri::AppHandle, settings: Settings) {
     let path = settings_path(&app);
 
     fs::create_dir_all(path.parent().unwrap()).unwrap();

@@ -1,100 +1,62 @@
-import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window"; // Add this for true fullscreen
-import { useNavigate, useParams } from "react-router-dom";
-import { fetchAvailableDownloads, fetchTitleInfo } from "../../api";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
-import { listen } from "@tauri-apps/api/event";
-import { MediaFallbackStrategy, resolutionToNumber, useSettings } from "../../SettingsContext";
+import { exists } from "@tauri-apps/plugin-fs";
+import { convertFileSrc } from "@tauri-apps/api/core"; // 1. Import convertFileSrc
 
 export default function Play() {
-    const { id, season, episode } = useParams();
-    const { settings } = useSettings();
+    const location = useLocation();
+    const filepath = location.state?.filepath;
 
-    const [filename, setFilename] = useState<string | null>(null);
-    const [videoSrc, setVideoSrc] = useState<string | null>(null);
-    const [progress, setProgress] = useState(0);
-    const [ready, setReady] = useState(false);
+    if (!filepath) {
+        return <div>Error: No file selected</div>;
+    }
     
+    const [videoSrc, setVideoSrc] = useState<string | null>(null);
+    const [notFound, setNotFound] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
 
-    const started = useRef(false);
-    const videoRef = useRef<HTMLVideoElement | null>(null); 
+    const videoRef = useRef<HTMLVideoElement | null>(null);
     const navigate = useNavigate();
 
-    // 1. Initial Setup and Download Logic
+    // Resolve and convert the local file path
     useEffect(() => {
-        if (started.current) return;
-        started.current = true;
+        let cancelled = false;
 
-        let unlistenProgress: (() => void) | undefined;
-        let unlistenComplete: (() => void) | undefined;
+        (async () => {
+            const fileExists = await exists(filepath).catch(() => false);
+            
+            try {
+                await exists(filepath);
+            } catch (e) {
+                console.error(e);
+            }
 
-        async function start() {
-            if (!id) return;
+            console.log(filepath)
+            console.log(fileExists);
 
-            const isTV = season !== undefined && episode !== undefined;
-            const type = isTV ? "tv" : "movie";
-            const numId = Number(id);
+            if (cancelled) return;
 
-            const titleInfo = await fetchTitleInfo(type, numId);
-
-            let file = `${titleInfo.title} (${titleInfo.release_date?.split("-")[0]})`;
-            if (isTV) file += ` S${season}E${episode}`;
-            file += ".mp4";
-
-            setFilename(file);
-
-            // Listen for background download progress
-            unlistenProgress = await listen<{ downloaded: number; total: number; }>(
-                "download-progress", 
-                (event) => {
-                    if (event.payload.total > 0) {
-                        setProgress((event.payload.downloaded / event.payload.total) * 100);
-                    }
-                }
-            );
-
-            unlistenComplete = await listen<string>("download-complete", () => setReady(true));
-
-            const downloads = await fetchAvailableDownloads(numId, type, season, episode);
-
-            if (downloads == null) {
-                await navigate("/NotAvailable");
+            if (!fileExists) {
+                setNotFound(true);
                 return;
             }
 
-            const mp4 = downloads.mp4Formats;
-            let url = mp4.find(
-                (format) => format.resolution == resolutionToNumber(settings.preferredQuality)
-            )?.url;
-
-            if (url == undefined) {
-                if (mp4.length > 0) {
-                    url = mp4[settings.fallbackStrategy == MediaFallbackStrategy.HIGHEST ? mp4.length - 1 : 0].url;
-                } else return;
-            }
-
-            // SET VIDEO SOURCE TO REMOTE URL IMMEDIATELY
-            // This enables native seeking/buffering instead of waiting on the local file.
-            setVideoSrc(url);
-
-            // Continue the background download for offline saving
-            invoke("download_file", {
-                url,
-                filename: file,
-                folder: settings.savePath
-            }).catch(console.error);
-        }
-
-        start();
+            // 2. Convert raw OS path to asset protocol URL
+            const assetUrl = convertFileSrc(filepath);
+            setVideoSrc(assetUrl);
+        })();
 
         return () => {
-            unlistenProgress?.();
-            unlistenComplete?.();
+            cancelled = true;
         };
-    }, [id, season, episode, settings, navigate]);
+    }, [filepath]);
 
-    // 2. Auto-Fullscreen using Tauri's Window API
+    useEffect(() => {
+        if (notFound) navigate("/NotAvailable");
+    }, [notFound, navigate]);
+
+    // Auto-Fullscreen using Tauri's Window API
     useEffect(() => {
         if (!videoSrc) return;
         const enterFullscreen = async () => {
@@ -102,14 +64,12 @@ export default function Play() {
             await win.setFullscreen(true);
         };
         enterFullscreen();
-        
-        // Cleanup: exit fullscreen if component unmounts
+
         return () => {
             getCurrentWindow().setFullscreen(false).catch(console.error);
         };
     }, [videoSrc]);
 
-    // 3. Back Button Handler
     const handleBack = async () => {
         const win = getCurrentWindow();
         if (await win.isFullscreen()) {
@@ -118,7 +78,6 @@ export default function Play() {
         navigate(-1);
     };
 
-    // 4. Keyboard Shortcuts
     useEffect(() => {
         const handleKeyDown = async (e: KeyboardEvent) => {
             if (!videoRef.current) return;
@@ -126,11 +85,11 @@ export default function Play() {
             const win = getCurrentWindow();
 
             switch (e.key.toLowerCase()) {
-                case "escape": // Ensure escape exits native fullscreen
+                case "escape":
                     if (await win.isFullscreen()) await win.setFullscreen(false);
                     break;
                 case " ":
-                case "k": 
+                case "k":
                     e.preventDefault();
                     video.paused ? video.play() : video.pause();
                     break;
@@ -166,21 +125,18 @@ export default function Play() {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, []);
 
-    // Render Initial Loading Screen
-    if (!filename || !videoSrc) {
+    if (!videoSrc) {
         return (
             <div className="loading-screen" style={{ width: "100vw", height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", backgroundColor: "black", color: "white" }}>
                 <span className="loading-spinner" />
-                <p>Loading stream...</p>
+                <p>Loading video...</p>
             </div>
         );
     }
 
     return (
         <div style={{ position: "relative", width: "100vw", height: "100vh", backgroundColor: "black", overflow: "hidden" }}>
-            
-            {/* Netflix-style Back Button */}
-            <button 
+            <button
                 onClick={handleBack}
                 style={{
                     position: "absolute",
@@ -197,10 +153,7 @@ export default function Play() {
                     display: "flex",
                     alignItems: "center",
                     gap: "10px",
-                    // transition: "background 0.2s"
                 }}
-                onMouseOver={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.8)"}
-                onMouseOut={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.5)"}
             >
                 ← Back
             </button>
@@ -217,7 +170,6 @@ export default function Play() {
                 onError={(e) => console.log("video error", e.currentTarget.error)}
             />
 
-            {/* Buffering Overlay */}
             {isBuffering && (
                 <div style={{
                     position: "absolute",
