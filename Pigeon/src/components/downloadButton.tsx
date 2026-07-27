@@ -8,12 +8,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { useNavigate } from "react-router-dom";
 import "./download-button.css";
+import { useMedia } from "../MediaContext";
+import { MediaDetails } from "../responses";
 
 interface DownloadButtonProps {
     type: "movie" | "tv";
-    id: number;
-    season?: number;
-    episode?: number;
+    details: MediaDetails
 }
 
 type DownloadStatus = "checking" | "unavailable" | "idle" | "downloading" | "downloaded";
@@ -22,17 +22,19 @@ const RING_CIRCUMFERENCE = 97.39;
 
 export function DownloadButton({
     type,
-    id,
-    season,
-    episode,
+    details
 }: DownloadButtonProps) {
     const navigate = useNavigate();
     const { settings } = useSettings();
+    const { downloaded, downloadFile } = useMedia();
 
     const [status, setStatus] = useState<DownloadStatus>("checking");
     const [progress, setProgress] = useState(0);
     const [downloadInfo, setDownloadInfo] = useState<{ url: string; filename: string; baseTitle: string } | null>(null);
     const [localFilepath, setLocalFilepath] = useState<string | null>(null);
+
+    const episodeData = details.episode;
+    const isTV = episodeData != null;
 
     useEffect(() => {
         let ignore = false;
@@ -40,17 +42,28 @@ export function DownloadButton({
         async function init() {
             setStatus("checking");
 
+            const year = details.release_date?.split("-")[0] || "Unknown";
+            const baseTitle = `${details.title} (${year})`;
+
+            // Build full filename for this specific episode
+            const filename = `${baseTitle}${isTV ? ` S${episodeData.season_number}E${episodeData.episode_number}` : ""}.mp4`;
+
             // 1. FAST PATH: Check the Rust lookup table and OS file system
             try {
-                const existing = await invoke<{ filepath: string; filename: string } | null>(
-                    "check_download",
-                    { id, season, episode, savePath: settings.savePath }
-                );
+                const data = await invoke<MediaDetails | null>("get_file_info", {
+                    folder: settings.savePath,
+                    filename: filename
+                });
 
-                if (existing) {
+                console.log(data);
+
+                if (data) {
                     if (ignore) return;
-                    setLocalFilepath(existing.filepath);
-                    setDownloadInfo({ url: "", filename: existing.filename, baseTitle: "" });
+
+                    const filepath = `${settings.savePath}/${filename}`;
+
+                    setLocalFilepath(filepath);
+                    setDownloadInfo({ url: "", filename: filename, baseTitle: "" });
                     setStatus("downloaded");
                     return; // Skip all API calls!
                 }
@@ -60,7 +73,7 @@ export function DownloadButton({
 
             // 2. SLOW PATH: File isn't on disk, query API for streams and title info
             try {
-                const downloads = await fetchAvailableDownloads(id, type, season, episode);
+                const downloads = await fetchAvailableDownloads(details.id, type, episodeData?.season_number, episodeData?.episode_number);
                 if (ignore) return;
 
                 if (!downloads || downloads.mp4Formats.length === 0) {
@@ -68,16 +81,7 @@ export function DownloadButton({
                     return;
                 }
 
-                const titleInfo = await fetchTitleInfo(type, id);
                 if (ignore) return;
-
-                // Build the base title string ("The Walking Dead (2010)")
-                const isTV = season !== undefined && episode !== undefined;
-                const year = titleInfo.release_date?.split("-")[0] || "Unknown";
-                const baseTitle = `${titleInfo.title} (${year})`;
-
-                // Build full filename for this specific episode
-                const filename = `${baseTitle}${isTV ? ` S${season}E${episode}` : ""}.mp4`;
 
                 const mp4s = downloads.mp4Formats.filter((entry) => entry.url !== "");
                 let bestUrl = mp4s.find(
@@ -111,9 +115,9 @@ export function DownloadButton({
         };
     }, [
         type,
-        id,
-        season,
-        episode,
+        details.id,
+        episodeData?.season_number,
+        episodeData?.episode_number,
         settings.preferredQuality,
         settings.fallbackStrategy,
         settings.savePath,
@@ -148,13 +152,11 @@ export function DownloadButton({
                 }
             );
 
-            await invoke("download_file", {
-                url: downloadInfo.url,
-                filename: downloadInfo.filename,
-                folder: settings.savePath,
-                titleId: id,
-                baseTitle: downloadInfo.baseTitle
-            });
+            await downloadFile(
+                downloadInfo.url,
+                downloadInfo.filename,
+                details
+            );
         } catch (err) {
             console.error("Download failed:", err);
             setStatus("idle");
@@ -166,7 +168,7 @@ export function DownloadButton({
 
     const handlePlay = (e: React.MouseEvent) => {
         e.stopPropagation();
-        const route = type === "tv" ? `/play/tv/${id}/${season}/${episode}` : `/play/movie/${id}`;
+        const route = type === "tv" ? `/play/tv/${details.id}/${episodeData?.season_number}/${episodeData?.episode_number}` : `/play/movie/${details.id}`;
 
         navigate(route, {
             state: {
@@ -180,7 +182,7 @@ export function DownloadButton({
         return (
             <button
                 type="button"
-                className="play-button"
+                className="download-play-button"
                 aria-label={`Play ${downloadInfo?.filename ?? "media"}`}
                 onClick={handlePlay}
             >

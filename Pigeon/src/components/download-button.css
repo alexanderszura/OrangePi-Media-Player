@@ -82,7 +82,7 @@
     dominant-baseline: middle;
 }
 
-.play-button {
+.download-play-button {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -90,28 +90,23 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 1px solid rgba(133, 226, 18, 0.4);
-  background: rgba(61, 200, 57, 0.298);
-  
-  /* Fallback to green if --play-soft is undefined */
-  color: var(--play-soft, #85e212); 
+  border: 1px solid rgba(255, 62, 120, 0.4);
+  background: rgba(255, 62, 120, 0.1);
+  color: var(--play-soft);
   font-size: 1.15rem;
-  
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-/* Ensure the SVG icon maintains its shape and inherits color */
-.play-button svg {
+.download-play-button svg {
   width: 1.2rem;
   height: 1.2rem;
   fill: currentColor;
 }
 
-.play-button:hover,
-.play-button:focus-visible {
-  /* Changed from red (255,62,120) to a glowing green */
-  background: rgba(133, 226, 18, 0.25);
-  box-shadow: 0 0 10px rgba(133, 226, 18, 0.4); /* Replaced undefined var */
+.download-play-button:hover,
+.download-play-button:focus-visible {
+  background: rgba(255, 62, 120, 0.22);
+  box-shadow: var(--shadow-glow-play);
   transform: scale(1.06);
 }

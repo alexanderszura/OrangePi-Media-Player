@@ -1,14 +1,20 @@
 import { mediaImagePath } from "../api";
-import { SeasonEpisode } from "../responses";
+import { MediaDetails, SeasonEpisode } from "../responses";
 import "./episode-card.css";
 import { DownloadButton } from "./downloadButton";
 
 interface EpisodeCardProps {
+    details: MediaDetails
     episode: SeasonEpisode
 }
 
-export function EpisodeCard({ episode }: EpisodeCardProps) {
+export function EpisodeCard({ episode, details }: EpisodeCardProps) {
   const imageUrl = mediaImagePath(episode.still_path);
+
+  const fullDetails: MediaDetails = {
+      ...details,
+      episode: episode,
+  };
 
   return (
     <div
@@ -28,7 +34,7 @@ export function EpisodeCard({ episode }: EpisodeCardProps) {
             ) : null}
         </div>
         
-        <DownloadButton type="tv" id={episode.show_id} season={episode.season_number} episode={episode.episode_number} />
+        <DownloadButton type="tv" details={fullDetails} />
     </div>
   );
 }

@@ -13,7 +13,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             download::download_file,
-            download::check_download,
+            download::load_stored_data,
+            download::get_file_info,
             settings::get_settings,
             settings::save_settings,
             emulator::get_games,
