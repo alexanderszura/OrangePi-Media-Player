@@ -6,6 +6,7 @@ import { useSettings } from "./SettingsContext";
 interface MediaContextType {
     downloaded: MediaDetails[];
     downloadFile: (url: string, filename: string, details: MediaDetails) => Promise<void>;
+    sanitize: (filename: string) => string;
 }
 
 const MediaContext = createContext<MediaContextType | null>(null);
@@ -32,6 +33,15 @@ export function MediaProvider({
         load();
     }, [settings.savePath])
 
+    const sanitize = (filename: string) => filename
+        // Remove characters illegal on Windows
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, "")
+        // Remove trailing spaces and periods
+        .replace(/[ .]+$/g, "")
+        // Collapse multiple spaces
+        .replace(/\s+/g, " ")
+        .trim();
+
     async function downloadFile(
         url: string,
         filename: string,
@@ -55,7 +65,8 @@ export function MediaProvider({
         <MediaContext.Provider
             value={{
                 downloaded,
-                downloadFile
+                downloadFile,
+                sanitize
             }}
         >
             {children}

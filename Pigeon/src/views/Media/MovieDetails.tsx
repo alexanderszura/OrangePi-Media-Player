@@ -1,10 +1,8 @@
 import { useLoaderData, useNavigate } from "react-router-dom";
 import { mediaImagePath } from "../../api";
 import { MediaDetails } from "../../responses";
-import { FaArrowLeft, FaCirclePlay } from "react-icons/fa6";
+import { FaArrowLeft } from "react-icons/fa6";
 import "../../styles/detail.css";
-import { IoMdDownload } from "react-icons/io";
-import { invoke } from "@tauri-apps/api/core";
 import { DownloadButton } from "../../components/downloadButton";
 
 export default function MovieDetails() {
@@ -40,7 +38,7 @@ export default function MovieDetails() {
 
                 <p className="detail-overview">{titleInfo.overview}</p>
 
-                <DownloadButton type="movie" id={titleInfo.id}/>
+                <DownloadButton type="movie" details={titleInfo}/>
             </div>
         </div>
     );

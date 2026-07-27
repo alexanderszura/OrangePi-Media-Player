@@ -26,15 +26,15 @@ export function DownloadButton({
 }: DownloadButtonProps) {
     const navigate = useNavigate();
     const { settings } = useSettings();
-    const { downloaded, downloadFile } = useMedia();
+    const { downloaded, downloadFile, sanitize } = useMedia();
 
     const [status, setStatus] = useState<DownloadStatus>("checking");
     const [progress, setProgress] = useState(0);
     const [downloadInfo, setDownloadInfo] = useState<{ url: string; filename: string; baseTitle: string } | null>(null);
     const [localFilepath, setLocalFilepath] = useState<string | null>(null);
 
-    const episodeData = details.episode;
-    const isTV = episodeData != null;
+    const episodeData = details?.episode;
+    const isTV = episodeData != undefined;
 
     useEffect(() => {
         let ignore = false;
@@ -46,7 +46,7 @@ export function DownloadButton({
             const baseTitle = `${details.title} (${year})`;
 
             // Build full filename for this specific episode
-            const filename = `${baseTitle}${isTV ? ` S${episodeData.season_number}E${episodeData.episode_number}` : ""}.mp4`;
+            const filename = sanitize(`${baseTitle}${isTV ? ` S${episodeData.season_number}E${episodeData.episode_number}` : ""}.mp4`);
 
             // 1. FAST PATH: Check the Rust lookup table and OS file system
             try {
@@ -54,8 +54,6 @@ export function DownloadButton({
                     folder: settings.savePath,
                     filename: filename
                 });
-
-                console.log(data);
 
                 if (data) {
                     if (ignore) return;

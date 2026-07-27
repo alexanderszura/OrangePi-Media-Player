@@ -32,9 +32,6 @@ export default function Play() {
                 console.error(e);
             }
 
-            console.log(filepath)
-            console.log(fileExists);
-
             if (cancelled) return;
 
             if (!fileExists) {
