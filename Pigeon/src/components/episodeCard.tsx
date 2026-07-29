@@ -1,24 +1,25 @@
-import { useNavigate } from "react-router-dom";
 import { mediaImagePath } from "../api";
-import { SeasonEpisode } from "../responses";
-import { FaCirclePlay } from "react-icons/fa6";
-import "../styles/episode-card.css";
+import { MediaDetails, SeasonEpisode } from "../responses";
+import "./episode-card.css";
+import { DownloadButton } from "./downloadButton";
 
 interface EpisodeCardProps {
+    details: MediaDetails
     episode: SeasonEpisode
 }
 
-export function EpisodeCard({ episode }: EpisodeCardProps) {
-  const navigate = useNavigate();
-
+export function EpisodeCard({ episode, details }: EpisodeCardProps) {
   const imageUrl = mediaImagePath(episode.still_path);
-  const playPath = `/play/tv/${episode.show_id}/${episode.season_number}/${episode.episode_number}`;
+
+  const fullDetails: MediaDetails = {
+      ...details,
+      episode: episode,
+  };
 
   return (
     <div
       className="episode-card"
       title={episode.overview}
-      onClick={() => navigate(playPath)}
     >
         <span className="episode-number">{episode.episode_number}</span>
 
@@ -32,18 +33,8 @@ export function EpisodeCard({ episode }: EpisodeCardProps) {
                 <span className="episode-runtime">{episode.runtime} min</span>
             ) : null}
         </div>
-
-        <button
-            type="button"
-            className="episode-play-button"
-            aria-label={`Play ${episode.name}`}
-            onClick={(e) => {
-                e.stopPropagation();
-                navigate(playPath);
-            }}
-        >
-            <FaCirclePlay />
-        </button>
+        
+        <DownloadButton type="tv" details={fullDetails} />
     </div>
   );
 }

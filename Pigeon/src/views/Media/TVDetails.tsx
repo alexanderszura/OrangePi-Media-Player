@@ -80,7 +80,7 @@ export default function TVDetails() {
                         </div>
                     ) : (
                         season.episodes.map((e) => (
-                            <EpisodeCard key={e.id} episode={e} />
+                            <EpisodeCard key={e.id} episode={e} details={titleInfo} />
                         ))
                     )}
                 </div>

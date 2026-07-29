@@ -17,6 +17,7 @@ import GameDetails from "./views/RetroGames/GameDetails";
 import { invoke } from "@tauri-apps/api/core";
 import { checkForUpdates } from "./updater";
 import { Update } from "@tauri-apps/plugin-updater";
+import { MediaProvider } from "./MediaContext";
 
 const router = createBrowserRouter([
   {
@@ -66,7 +67,9 @@ if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <SettingsProvider>
-        <RouterProvider router={router} />
+        <MediaProvider> 
+          <RouterProvider router={router} />
+        </MediaProvider>
       </SettingsProvider>
     </React.StrictMode>
   );

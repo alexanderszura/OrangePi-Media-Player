@@ -1,8 +1,8 @@
+use crate::secrets::{CLIENT_ID, CLIENT_SECRET};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
-use serde::{Deserialize, Serialize};
-use crate::secrets::{CLIENT_ID, CLIENT_SECRET};
 
 // =========================================================================
 // Models & Constants
@@ -143,7 +143,10 @@ async fn get_igdb_token() -> Result<String, String> {
         .map_err(|e| format!("Token request HTTP error: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(format!("Token request failed with status {}", response.status()));
+        return Err(format!(
+            "Token request failed with status {}",
+            response.status()
+        ));
     }
 
     let token_data = response
@@ -174,13 +177,17 @@ pub async fn search_games(
     let token = get_igdb_token().await?;
 
     // Filter out zero / empty platform IDs
-    let target_platforms: Vec<u32> = platforms.unwrap_or_else(|| {
-        CONSOLES
-            .iter()
-            .filter(|c| c.igdb_id != 0)
-            .map(|c| c.igdb_id)
-            .collect()
-    }).into_iter().filter(|&id| id != 0).collect();
+    let target_platforms: Vec<u32> = platforms
+        .unwrap_or_else(|| {
+            CONSOLES
+                .iter()
+                .filter(|c| c.igdb_id != 0)
+                .map(|c| c.igdb_id)
+                .collect()
+        })
+        .into_iter()
+        .filter(|&id| id != 0)
+        .collect();
 
     let escaped_name = name.replace('"', "\\\"");
 
@@ -235,7 +242,10 @@ pub async fn search_games(
 
     if !status.is_success() {
         let err_text = response.text().await.unwrap_or_default();
-        return Err(format!("IGDB request failed (Status {}): {}", status, err_text));
+        return Err(format!(
+            "IGDB request failed (Status {}): {}",
+            status, err_text
+        ));
     }
 
     let raw_games = response
@@ -251,12 +261,11 @@ pub async fn search_games(
             summary: g.summary,
             rating: g.rating,
             first_release_date: g.first_release_date,
-            platforms: g.platforms
+            platforms: g
+                .platforms
                 .unwrap_or_default()
                 .into_iter()
-                .filter_map(|id| {
-                    CONSOLES.iter().find(|c| c.igdb_id == id)
-                })
+                .filter_map(|id| CONSOLES.iter().find(|c| c.igdb_id == id))
                 .map(|c| ConsoleInfo {
                     id: c.id,
                     name: c.name.to_string(),
@@ -333,8 +342,8 @@ pub fn get_games(folder: String) -> Result<Vec<GameInfo>, String> {
     fs::create_dir_all(&folder)
         .map_err(|e| format!("Failed creating folder '{}': {}", folder, e))?;
 
-    let entries = fs::read_dir(&folder)
-        .map_err(|e| format!("Failed reading folder '{}': {}", folder, e))?;
+    let entries =
+        fs::read_dir(&folder).map_err(|e| format!("Failed reading folder '{}': {}", folder, e))?;
 
     let mut games = Vec::new();
 

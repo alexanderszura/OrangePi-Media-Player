@@ -149,6 +149,11 @@ export interface MediaDetails {
   genres: Genre[];
   runtime?: number | null;
   seasons?: Season[];
+
+  // Present only when this MediaDetails is attached to a single downloaded
+  // TV episode rather than a movie (or whole-show info). Lets a downloaded
+  // file be traced back to the exact episode it contains.
+  episode?: SeasonEpisode;
 }
 
 export function toMediaDetails(
