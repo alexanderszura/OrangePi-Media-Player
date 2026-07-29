@@ -8,25 +8,28 @@ on:
 jobs:
   release:
     name: Build and Release
-    
-    # Required for the action to create a GitHub Release
+
     permissions:
-      contents: write 
-      
+      contents: write
+
     strategy:
       fail-fast: false
       matrix:
         include:
-          # - platform: 'macos-latest'
-          #   args: '--target aarch64-apple-darwin' # Apple Silicon (M1/M2/M3)
-          # - platform: 'macos-latest'
-          #   args: '--target x86_64-apple-darwin'  # Intel Macs
-          - platform: 'ubuntu-22.04'
-            args: ''                                   # Standard x86_64 Linux
-          - platform: 'ubuntu-22.04'
-            args: '--target aarch64-unknown-linux-gnu' # ARM64 Linux (Orange Pi)
-          - platform: 'windows-latest'
-            args: ''                                   # Windows x86_64
+          # Linux x86_64
+          - platform: ubuntu-22.04
+            arch: x64
+            args: ""
+
+          # Linux ARM64 (Orange Pi)
+          - platform: ubuntu-22.04
+            arch: arm64
+            args: "--target aarch64-unknown-linux-gnu"
+
+          # Windows x86_64
+          - platform: windows-latest
+            arch: x64
+            args: ""
 
     runs-on: ${{ matrix.platform }}
 
@@ -44,11 +47,14 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          # This specifically adds the Mac architectures only when running on a Mac runner
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.arch == 'arm64' && 'aarch64-unknown-linux-gnu' || null }}
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: Pigeon/src-tauri
 
       - name: Install Linux dependencies
-        # This step ONLY runs when the matrix is currently on the Ubuntu runner
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt update
@@ -60,13 +66,20 @@ jobs:
             patchelf \
             xdg-utils
 
+      - name: Install ARM64 cross compiler
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            gcc-aarch64-linux-gnu \
+            libc6-dev-arm64-cross
+
       - name: Install npm packages
         working-directory: Pigeon
         run: npm ci
 
       - name: Create Rust secrets
-        # Windows uses Powershell by default, so we force bash for this cat command
-        shell: bash 
+        shell: bash
         run: |
           cat > Pigeon/src-tauri/src/secrets.rs <<'EOF'
           ${{ secrets.RUST_SECRETS }}
@@ -86,12 +99,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          projectPath: Pigeon 
-          tagName: ${{ github.ref_name }} 
-          releaseName: "Release ${{ github.ref_name }}"
-          releaseBody: "Automated release built via GitHub Actions."
+          projectPath: Pigeon
+          tagName: ${{ github.ref_name }}
+          releaseName: Release ${{ github.ref_name }}
+          releaseBody: Automated release built via GitHub Actions.
           releaseDraft: false
           prerelease: false
-          
-          # This passes the specific target arguments (like Apple Silicon vs Intel) to the Tauri CLI
           args: ${{ matrix.args }}
