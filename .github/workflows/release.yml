@@ -17,15 +17,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin' # Apple Silicon (M1/M2/M3)
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'  # Intel Macs
+          # - platform: 'macos-latest'
+          #   args: '--target aarch64-apple-darwin' # Apple Silicon (M1/M2/M3)
+          # - platform: 'macos-latest'
+          #   args: '--target x86_64-apple-darwin'  # Intel Macs
           - platform: 'ubuntu-22.04'
-            args: ''                              # Standard x86_64 Linux
-          # You can also add your ubuntu-22.04-arm back here if you are using self-hosted runners!
+            args: ''                                   # Standard x86_64 Linux
+          - platform: 'ubuntu-22.04'
+            args: '--target aarch64-unknown-linux-gnu' # ARM64 Linux (Orange Pi)
           - platform: 'windows-latest'
-            args: ''                              # Windows x86_64
+            args: ''                                   # Windows x86_64
 
     runs-on: ${{ matrix.platform }}
 
