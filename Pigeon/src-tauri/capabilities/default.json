@@ -9,7 +9,20 @@
     "core:default",
     "dialog:default",
     "core:window:allow-set-fullscreen",
-    "updater:default"
+    "updater:default",
+    "fs:default",
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-read",
+      "allow": [{ "path": "**" }]
+    }
   ],
   "remote": {
     "urls": [

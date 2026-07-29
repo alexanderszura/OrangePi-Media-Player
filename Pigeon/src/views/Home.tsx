@@ -18,7 +18,7 @@ export default function Home() {
                     <button
                         className="home-button home-button--primary"
                         data-autofocus
-                        onClick={async () => await navigate("/search")}
+                        onClick={async () => await navigate("/media-search")}
                     >
                         <FaSearch />
                         <span>Search</span>

@@ -1,8 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { GameData, GameImageType } from "../responses";
 import { gameImagePath } from "../api";
-import "../styles/item-card.css";
-import { invoke } from "@tauri-apps/api/core";
+import "./item-card.css";
 
 interface GameCardProps {
   game: GameData;

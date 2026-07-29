@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { MediaSearchResult } from "../responses";
 import { mediaImagePath } from "../api";
-import "../styles/item-card.css";
+import "./item-card.css";
 
 interface MediaCardProps {
   media: MediaSearchResult;

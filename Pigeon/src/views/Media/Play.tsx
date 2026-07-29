@@ -1,240 +1,404 @@
-import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window"; // Add this for true fullscreen
-import { useNavigate, useParams } from "react-router-dom";
-import { fetchAvailableDownloads, fetchTitleInfo } from "../../api";
-import { useEffect, useState, useRef } from "react";
-import { listen } from "@tauri-apps/api/event";
-import { MediaFallbackStrategy, resolutionToNumber, useSettings } from "../../SettingsContext";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { exists } from "@tauri-apps/plugin-fs";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { FaArrowLeft, FaPlay, FaPause, FaVolumeHigh, FaVolumeXmark } from "react-icons/fa6";
+import { MdReplay10, MdForward10 } from "react-icons/md";
+import "../../styles/play.css";
+
+const SEEK_SECONDS = 10;
+const HIDE_CONTROLS_AFTER_MS = 3500;
+
+/** "00:07" / "1:04:22" */
+function formatTime(seconds: number): string {
+  if (!isFinite(seconds) || seconds < 0) return "0:00";
+  const total = Math.floor(seconds);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const ss = String(s).padStart(2, "0");
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${ss}`;
+  return `${m}:${ss}`;
+}
+
+/** Splits a stored filename like "Show (2021) S1E3.mp4" into header text. */
+function parseTitle(raw: string | undefined): { primary: string; secondary?: string } {
+  if (!raw) return { primary: "Now Playing" };
+  const withoutExt = raw.replace(/\.[^/.]+$/, "");
+  const match = withoutExt.match(/^(.*)\sS(\d+)E(\d+)$/i);
+  if (match) {
+    return { primary: match[1], secondary: `Season ${match[2]} · Episode ${match[3]}` };
+  }
+  return { primary: withoutExt };
+}
+
+function getBufferedEnd(video: HTMLVideoElement): number {
+  const { buffered, currentTime } = video;
+  for (let i = 0; i < buffered.length; i++) {
+    if (buffered.start(i) <= currentTime && currentTime <= buffered.end(i)) {
+      return buffered.end(i);
+    }
+  }
+  return 0;
+}
 
 export default function Play() {
-    const { id, season, episode } = useParams();
-    const { settings } = useSettings();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-    const [filename, setFilename] = useState<string | null>(null);
-    const [videoSrc, setVideoSrc] = useState<string | null>(null);
-    const [progress, setProgress] = useState(0);
-    const [ready, setReady] = useState(false);
-    
-    const [isBuffering, setIsBuffering] = useState(false);
+  const filepath: string | undefined = location.state?.filepath;
+  const { primary: titlePrimary, secondary: titleSecondary } = parseTitle(location.state?.title);
 
-    const started = useRef(false);
-    const videoRef = useRef<HTMLVideoElement | null>(null); 
-    const navigate = useNavigate();
+  const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
 
-    // 1. Initial Setup and Download Logic
-    useEffect(() => {
-        if (started.current) return;
-        started.current = true;
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [bufferedEnd, setBufferedEnd] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
 
-        let unlistenProgress: (() => void) | undefined;
-        let unlistenComplete: (() => void) | undefined;
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [flashIcon, setFlashIcon] = useState<"play" | "pause" | null>(null);
+  const [flashKey, setFlashKey] = useState(0);
 
-        async function start() {
-            if (!id) return;
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const playButtonRef = useRef<HTMLButtonElement | null>(null);
+  const hideTimeoutRef = useRef<number | null>(null);
+  const flashTimeoutRef = useRef<number | null>(null);
+  const isPlayingRef = useRef(false);
 
-            const isTV = season !== undefined && episode !== undefined;
-            const type = isTV ? "tv" : "movie";
-            const numId = Number(id);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
-            const titleInfo = await fetchTitleInfo(type, numId);
+  // Resolve and convert the local file path.
+  useEffect(() => {
+    if (!filepath) return;
+    let cancelled = false;
 
-            let file = `${titleInfo.title} (${titleInfo.release_date?.split("-")[0]})`;
-            if (isTV) file += ` S${season}E${episode}`;
-            file += ".mp4";
+    (async () => {
+      const fileExists = await exists(filepath).catch(() => false);
+      if (cancelled) return;
 
-            setFilename(file);
+      if (!fileExists) {
+        setNotFound(true);
+        return;
+      }
 
-            // Listen for background download progress
-            unlistenProgress = await listen<{ downloaded: number; total: number; }>(
-                "download-progress", 
-                (event) => {
-                    if (event.payload.total > 0) {
-                        setProgress((event.payload.downloaded / event.payload.total) * 100);
-                    }
-                }
-            );
+      setVideoSrc(convertFileSrc(filepath));
+    })();
 
-            unlistenComplete = await listen<string>("download-complete", () => setReady(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [filepath]);
 
-            const downloads = await fetchAvailableDownloads(numId, type, season, episode);
+  useEffect(() => {
+    if (notFound) navigate("/NotAvailable");
+  }, [notFound, navigate]);
 
-            if (downloads == null) {
-                await navigate("/NotAvailable");
-                return;
-            }
+  // Auto-fullscreen for the duration of playback.
+  useEffect(() => {
+    if (!videoSrc) return;
+    getCurrentWindow().setFullscreen(true);
 
-            const mp4 = downloads.mp4Formats;
-            let url = mp4.find(
-                (format) => format.resolution == resolutionToNumber(settings.preferredQuality)
-            )?.url;
+    return () => {
+      getCurrentWindow().setFullscreen(false).catch(console.error);
+    };
+  }, [videoSrc]);
 
-            if (url == undefined) {
-                if (mp4.length > 0) {
-                    url = mp4[settings.fallbackStrategy == MediaFallbackStrategy.HIGHEST ? mp4.length - 1 : 0].url;
-                } else return;
-            }
+  // Focus a sensible default control as soon as the player is on screen,
+  // so a remote/D-pad has somewhere to start from.
+  useEffect(() => {
+    if (!videoSrc) return;
+    const timer = window.setTimeout(() => playButtonRef.current?.focus(), 50);
+    return () => window.clearTimeout(timer);
+  }, [videoSrc]);
 
-            // SET VIDEO SOURCE TO REMOTE URL IMMEDIATELY
-            // This enables native seeking/buffering instead of waiting on the local file.
-            setVideoSrc(url);
+  const clearHideTimeout = () => {
+    if (hideTimeoutRef.current) {
+      window.clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+  };
 
-            // Continue the background download for offline saving
-            invoke("download_file", {
-                url,
-                filename: file,
-                folder: settings.savePath
-            }).catch(console.error);
-        }
+  const scheduleHide = () => {
+    clearHideTimeout();
+    hideTimeoutRef.current = window.setTimeout(() => {
+      setControlsVisible(false);
+    }, HIDE_CONTROLS_AFTER_MS);
+  };
 
-        start();
+  const revealControls = () => {
+    setControlsVisible(true);
+    if (isPlayingRef.current) {
+      scheduleHide();
+    } else {
+      clearHideTimeout();
+    }
+  };
 
-        return () => {
-            unlistenProgress?.();
-            unlistenComplete?.();
-        };
-    }, [id, season, episode, settings, navigate]);
+  // Controls always stay up while paused; auto-hide only while playing.
+  useEffect(() => {
+    if (isPlaying) {
+      scheduleHide();
+    } else {
+      clearHideTimeout();
+      setControlsVisible(true);
+    }
+    return clearHideTimeout;
+  }, [isPlaying]);
 
-    // 2. Auto-Fullscreen using Tauri's Window API
-    useEffect(() => {
-        if (!videoSrc) return;
-        const enterFullscreen = async () => {
-            const win = getCurrentWindow();
+  const flash = (kind: "play" | "pause") => {
+    setFlashIcon(kind);
+    setFlashKey((k) => k + 1);
+    if (flashTimeoutRef.current) window.clearTimeout(flashTimeoutRef.current);
+    flashTimeoutRef.current = window.setTimeout(() => setFlashIcon(null), 550);
+  };
+
+  const handleBack = async () => {
+    const win = getCurrentWindow();
+    if (await win.isFullscreen()) {
+      await win.setFullscreen(false);
+    }
+    navigate(-1);
+  };
+
+  const togglePlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) video.play();
+    else video.pause();
+  };
+
+  const skip = (delta: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const max = duration || video.duration || Infinity;
+    video.currentTime = Math.min(max, Math.max(0, video.currentTime + delta));
+    revealControls();
+  };
+
+  const toggleMute = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    revealControls();
+  };
+
+  const handleScrubberClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const video = videoRef.current;
+    if (!video || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    video.currentTime = pct * duration;
+    revealControls();
+  };
+
+  const handleScrubberKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    switch (e.key) {
+      case "ArrowLeft":
+        e.preventDefault();
+        e.stopPropagation();
+        skip(-SEEK_SECONDS);
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        e.stopPropagation();
+        skip(SEEK_SECONDS);
+        break;
+      case "Home":
+        e.preventDefault();
+        e.stopPropagation();
+        video.currentTime = 0;
+        break;
+      case "End":
+        e.preventDefault();
+        e.stopPropagation();
+        if (duration) video.currentTime = duration;
+        break;
+      // ArrowUp/ArrowDown are intentionally left alone so the app's
+      // spatial-navigation system can move focus to the controls row.
+    }
+  };
+
+  // Global shortcuts: reveal controls on any remote/keyboard input, plus a
+  // couple of keyboard-only conveniences that never fight a focused button.
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      revealControls();
+
+      const video = videoRef.current;
+      if (!video) return;
+
+      switch (e.key.toLowerCase()) {
+        case "m":
+          e.preventDefault();
+          video.muted = !video.muted;
+          break;
+        case "f": {
+          e.preventDefault();
+          const win = getCurrentWindow();
+          const isFull = await win.isFullscreen();
+          if (isFull) {
+            // Never allow dropping out of fullscreen while a title is
+            // actively playing — only when paused.
+            if (video.paused) await win.setFullscreen(false);
+          } else {
             await win.setFullscreen(true);
-        };
-        enterFullscreen();
-        
-        // Cleanup: exit fullscreen if component unmounts
-        return () => {
-            getCurrentWindow().setFullscreen(false).catch(console.error);
-        };
-    }, [videoSrc]);
-
-    // 3. Back Button Handler
-    const handleBack = async () => {
-        const win = getCurrentWindow();
-        if (await win.isFullscreen()) {
-            await win.setFullscreen(false);
+          }
+          break;
         }
-        navigate(-1);
+      }
     };
 
-    // 4. Keyboard Shortcuts
-    useEffect(() => {
-        const handleKeyDown = async (e: KeyboardEvent) => {
-            if (!videoRef.current) return;
-            const video = videoRef.current;
-            const win = getCurrentWindow();
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
-            switch (e.key.toLowerCase()) {
-                case "escape": // Ensure escape exits native fullscreen
-                    if (await win.isFullscreen()) await win.setFullscreen(false);
-                    break;
-                case " ":
-                case "k": 
-                    e.preventDefault();
-                    video.paused ? video.play() : video.pause();
-                    break;
-                case "f":
-                    e.preventDefault();
-                    const isFull = await win.isFullscreen();
-                    await win.setFullscreen(!isFull);
-                    break;
-                case "arrowright":
-                    e.preventDefault();
-                    video.currentTime += 10;
-                    break;
-                case "arrowleft":
-                    e.preventDefault();
-                    video.currentTime -= 10;
-                    break;
-                case "arrowup":
-                    e.preventDefault();
-                    video.volume = Math.min(1, video.volume + 0.1);
-                    break;
-                case "arrowdown":
-                    e.preventDefault();
-                    video.volume = Math.max(0, video.volume - 0.1);
-                    break;
-                case "m":
-                    e.preventDefault();
-                    video.muted = !video.muted;
-                    break;
-            }
-        };
+  if (!filepath) {
+    return <div className="loading-screen">Error: No file selected</div>;
+  }
 
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, []);
-
-    // Render Initial Loading Screen
-    if (!filename || !videoSrc) {
-        return (
-            <div className="loading-screen" style={{ width: "100vw", height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", backgroundColor: "black", color: "white" }}>
-                <span className="loading-spinner" />
-                <p>Loading stream...</p>
-            </div>
-        );
-    }
-
+  if (!videoSrc) {
     return (
-        <div style={{ position: "relative", width: "100vw", height: "100vh", backgroundColor: "black", overflow: "hidden" }}>
-            
-            {/* Netflix-style Back Button */}
-            <button 
-                onClick={handleBack}
-                style={{
-                    position: "absolute",
-                    top: "20px",
-                    left: "20px",
-                    zIndex: 20,
-                    background: "rgba(0,0,0,0.5)",
-                    border: "none",
-                    color: "white",
-                    fontSize: "24px",
-                    cursor: "pointer",
-                    padding: "10px 15px",
-                    borderRadius: "5px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    // transition: "background 0.2s"
-                }}
-                onMouseOver={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.8)"}
-                onMouseOut={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.5)"}
-            >
-                ← Back
-            </button>
-
-            <video
-                ref={videoRef}
-                src={videoSrc}
-                controls
-                autoPlay
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                onWaiting={() => setIsBuffering(true)}
-                onPlaying={() => setIsBuffering(false)}
-                onCanPlay={() => setIsBuffering(false)}
-                onError={(e) => console.log("video error", e.currentTarget.error)}
-            />
-
-            {/* Buffering Overlay */}
-            {isBuffering && (
-                <div style={{
-                    position: "absolute",
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "rgba(0, 0, 0, 0.4)",
-                    color: "white",
-                    pointerEvents: "none",
-                    zIndex: 10
-                }}>
-                    <span className="loading-spinner" />
-                    <p style={{ marginTop: "10px", fontSize: "1.2rem" }}>Buffering...</p>
-                </div>
-            )}
-        </div>
+      <div className="loading-screen" style={{ height: "100vh", backgroundColor: "black" }}>
+        <span className="loading-spinner" />
+        <p>Loading video...</p>
+      </div>
     );
+  }
+
+  const playedPct = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const bufferedPct = duration > 0 ? (bufferedEnd / duration) * 100 : 0;
+  const isMuted = muted || volume === 0;
+
+  return (
+    <div
+      className={`player${controlsVisible ? "" : " player--controls-hidden"}`}
+      onMouseMove={revealControls}
+    >
+      <video
+        ref={videoRef}
+        src={videoSrc}
+        autoPlay
+        onClick={togglePlay}
+        onWaiting={() => setIsBuffering(true)}
+        onPlaying={() => setIsBuffering(false)}
+        onCanPlay={() => setIsBuffering(false)}
+        onPlay={() => { setIsPlaying(true); flash("play"); }}
+        onPause={() => { setIsPlaying(false); flash("pause"); }}
+        onTimeUpdate={(e) => {
+          const video = e.currentTarget;
+          setCurrentTime(video.currentTime);
+          setBufferedEnd(getBufferedEnd(video));
+        }}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onVolumeChange={(e) => {
+          setMuted(e.currentTarget.muted);
+          setVolume(e.currentTarget.volume);
+        }}
+        onError={(e) => console.log("video error", e.currentTarget.error)}
+      />
+
+      {isBuffering && (
+        <div className="player__buffering">
+          <span className="loading-spinner" />
+          <p>Buffering...</p>
+        </div>
+      )}
+
+      {flashIcon && (
+        <div key={flashKey} className="player__center-flash">
+          {flashIcon === "play" ? <FaPlay /> : <FaPause />}
+        </div>
+      )}
+
+      <div className="player__scrim player__scrim--top" />
+      <div className="player__scrim player__scrim--bottom" />
+
+      <div className="player__top-bar">
+        <button
+          className="player__back-button"
+          onClick={handleBack}
+          aria-label="Back"
+        >
+          <FaArrowLeft />
+        </button>
+
+        <div className="player__title-block">
+          {titleSecondary && <span className="player__eyebrow">{titleSecondary}</span>}
+          <h1 className="player__title">{titlePrimary}</h1>
+        </div>
+      </div>
+
+      <div className="player__bottom-bar">
+        <div
+          className="player__scrubber"
+          role="slider"
+          tabIndex={0}
+          aria-label="Seek"
+          aria-valuemin={0}
+          aria-valuemax={Math.round(duration)}
+          aria-valuenow={Math.round(currentTime)}
+          onClick={handleScrubberClick}
+          onKeyDown={handleScrubberKeyDown}
+        >
+          <div className="player__scrubber-track">
+            <div className="player__scrubber-buffered" style={{ width: `${bufferedPct}%` }} />
+            <div className="player__scrubber-fill" style={{ width: `${playedPct}%` }} />
+            <div className="player__scrubber-thumb" style={{ left: `${playedPct}%` }} />
+          </div>
+        </div>
+
+        <div className="player__time-row">
+          <span>{formatTime(currentTime)}</span>
+          <span className="player__time-sep">/</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+
+        <div className="player__controls-row">
+          <button
+            className="player__control-button"
+            onClick={() => skip(-SEEK_SECONDS)}
+            aria-label="Rewind 10 seconds"
+          >
+            <MdReplay10 />
+          </button>
+
+          <button
+            ref={playButtonRef}
+            className="player__control-button player__control-button--primary"
+            onClick={togglePlay}
+            aria-label={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? <FaPause /> : <FaPlay />}
+          </button>
+
+          <button
+            className="player__control-button"
+            onClick={() => skip(SEEK_SECONDS)}
+            aria-label="Forward 10 seconds"
+          >
+            <MdForward10 />
+          </button>
+
+          <button
+            className="player__control-button player__control-button--mute"
+            onClick={toggleMute}
+            aria-label={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted ? <FaVolumeXmark /> : <FaVolumeHigh />}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
