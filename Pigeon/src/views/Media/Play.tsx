@@ -101,14 +101,12 @@ export default function Play() {
     if (notFound) navigate("/NotAvailable");
   }, [notFound, navigate]);
 
-  // Auto-fullscreen for the duration of playback.
+  // Force fullscreen once the video is ready. Deliberately no cleanup here —
+  // the app never drops out of fullscreen on its own, including when this
+  // screen unmounts (e.g. navigating back).
   useEffect(() => {
     if (!videoSrc) return;
-    getCurrentWindow().setFullscreen(true);
-
-    return () => {
-      getCurrentWindow().setFullscreen(false).catch(console.error);
-    };
+    getCurrentWindow().setFullscreen(true).catch(console.error);
   }, [videoSrc]);
 
   // Focus a sensible default control as soon as the player is on screen,
@@ -160,11 +158,8 @@ export default function Play() {
     flashTimeoutRef.current = window.setTimeout(() => setFlashIcon(null), 550);
   };
 
-  const handleBack = async () => {
-    const win = getCurrentWindow();
-    if (await win.isFullscreen()) {
-      await win.setFullscreen(false);
-    }
+  const handleBack = () => {
+    // Fullscreen is never exited here — this only moves back one screen.
     navigate(-1);
   };
 
@@ -232,29 +227,31 @@ export default function Play() {
   // Global shortcuts: reveal controls on any remote/keyboard input, plus a
   // couple of keyboard-only conveniences that never fight a focused button.
   useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       revealControls();
 
       const video = videoRef.current;
       if (!video) return;
 
-      switch (e.key.toLowerCase()) {
-        case "m":
+      const key = e.key.toLowerCase();
+
+      if (key === "m") {
+        e.preventDefault();
+        video.muted = !video.muted;
+        return;
+      }
+
+      // OK/Enter (and Space) should reliably toggle play/pause. Native
+      // <button> elements already handle Enter/Space themselves, so only
+      // step in when focus *isn't* on one of our buttons — e.g. the remote's
+      // OK press landed on the video/scrubber, or focus was lost entirely
+      // (which the controls-hiding CSS used to cause). This is the fallback
+      // that makes OK reliably pause/resume no matter what has focus.
+      if (e.key === "Enter" || e.key === " ") {
+        const activeTag = (document.activeElement as HTMLElement | null)?.tagName;
+        if (activeTag !== "BUTTON") {
           e.preventDefault();
-          video.muted = !video.muted;
-          break;
-        case "f": {
-          e.preventDefault();
-          const win = getCurrentWindow();
-          const isFull = await win.isFullscreen();
-          if (isFull) {
-            // Never allow dropping out of fullscreen while a title is
-            // actively playing — only when paused.
-            if (video.paused) await win.setFullscreen(false);
-          } else {
-            await win.setFullscreen(true);
-          }
-          break;
+          togglePlay();
         }
       }
     };

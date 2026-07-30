@@ -1,5 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { checkForUpdates } from "./updater";
+
+const UPDATE_POLL_MINUTES: number = 5.0;
 
 export enum MediaResolution {
     k360 = "K360",
@@ -68,6 +71,17 @@ export function SettingsProvider({
         }
 
         load();
+    }, []);
+
+    useEffect(() => {
+        const interval = setInterval(
+            checkForUpdates,
+            UPDATE_POLL_MINUTES * 60 * 1000
+        )
+
+        checkForUpdates();
+
+        return () => clearInterval(interval)
     }, []);
 
     async function updateSetting<K extends keyof Settings>(

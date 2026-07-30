@@ -131,27 +131,28 @@ export function useSpatialNavigation() {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const active = document.activeElement as HTMLElement | null;
-
-      // Never fight the native <video> element's own keyboard controls.
-      if (active?.tagName === "VIDEO") return;
+      const isVideoFocused = active?.tagName === "VIDEO";
 
       switch (e.key) {
         case "ArrowUp":
         case "ArrowDown":
-          // A focused <select> uses Up/Down to change its value natively —
-          // don't hijack that. Left/Right still move focus off of it.
-          if (active?.tagName === "SELECT") return;
+          // Never fight the native <video> element's own keyboard controls,
+          // and don't hijack a focused <select>'s native Up/Down behavior.
+          if (isVideoFocused || active?.tagName === "SELECT") return;
           e.preventDefault();
           moveFocus(e.key === "ArrowUp" ? "up" : "down");
           break;
 
         case "ArrowLeft":
         case "ArrowRight":
+          if (isVideoFocused) return;
           e.preventDefault();
           moveFocus(e.key === "ArrowLeft" ? "left" : "right");
           break;
 
         case "Escape":
+          // Always goes back, regardless of what currently has focus —
+          // this is the remote's "back" button and must never be a no-op.
           e.preventDefault();
           navigate(-1);
           break;

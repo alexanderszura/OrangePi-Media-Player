@@ -28,6 +28,11 @@ jobs:
           - platform: 'windows-latest'
             args: ''                                   # Windows x86_64
 
+          # Windows ARM64
+          - platform: windows-latest
+            arch: arm64
+            args: "--target aarch64-pc-windows-msvc"
+
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -43,6 +48,13 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Add Rust Target for Windows ARM64
+        if: matrix.platform == 'windows-latest' && matrix.arch == 'arm64'
+        run: rustup target add aarch64-pc-windows-msvc
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
         with:
           # This specifically adds the Mac architectures only when running on a Mac runner
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}

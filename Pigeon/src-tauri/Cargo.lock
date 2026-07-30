@@ -2653,7 +2653,7 @@ dependencies = [
 
 [[package]]
 name = "pigeon"
-version = "0.1.0"
+version = "0.2.3"
 dependencies = [
  "futures-util",
  "reqwest 0.12.28",

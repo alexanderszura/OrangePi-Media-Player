@@ -144,14 +144,12 @@
   align-items: center;
   gap: 20px;
   padding: 36px 56px 0;
-  transition: opacity 0.35s ease, visibility 0s linear 0s;
+  transition: opacity 0.35s ease;
 }
 
 .player--controls-hidden .player__top-bar {
   opacity: 0;
-  visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.35s ease, visibility 0s linear 0.35s;
 }
 
 .player__back-button {
@@ -222,14 +220,12 @@
   flex-direction: column;
   gap: 14px;
   padding: 0 56px 40px;
-  transition: opacity 0.35s ease, visibility 0s linear 0s;
+  transition: opacity 0.35s ease;
 }
 
 .player--controls-hidden .player__bottom-bar {
   opacity: 0;
-  visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.35s ease, visibility 0s linear 0.35s;
 }
 
 /* Scrubber — generous hit area, slim visual track */

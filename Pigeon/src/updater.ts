@@ -3,33 +3,40 @@ import { check } from "@tauri-apps/plugin-updater";
 
 let pendingUpdate: any = null;
 
-export async function checkForUpdates() {
+export async function checkForUpdates(verbose=false): Promise<boolean> {
   try {
     const update = await check();
 
     if (!update) {
-      console.log("No updates available");
-      return;
+      if (verbose)
+        console.log("No updates available");
+      return false;
     }
 
-    console.log(`Update available: ${update.version}`);
+    if (verbose)
+      console.log(`Update available: ${update.version}`);
 
     pendingUpdate = update;
 
-    attemptUpdateInstall();
+    attemptUpdateInstall(verbose=verbose);
 
   } catch (error) {
     console.error("Update check failed:", error);
   }
+
+  return updateAvailable();
 }
 
-async function attemptUpdateInstall() {
+export const updateAvailable = () => pendingUpdate != null;
+
+export async function attemptUpdateInstall(verbose=false) {
   if (!pendingUpdate) {
     return;
   }
 
   try {
-    console.log("Installing update...");
+    if (verbose)
+      console.log("Installing update...");
 
     await pendingUpdate.downloadAndInstall();
 
