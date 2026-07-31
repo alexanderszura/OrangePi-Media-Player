@@ -12,18 +12,49 @@ use std::time::{Duration, Instant};
 pub enum Console {
     NES,
     SNES,
+    GB,
+    GBC,
     GBA,
+    GENESIS,
+    PS1,
     ARCADE,
+    N64,
 }
 
-// Internal app definition
 #[derive(Debug, Clone)]
 struct ConsoleDefinition {
     id: u32,
     console: Console,
     name: &'static str,
-    extension: &'static str,
+    extensions: &'static [&'static str],
     igdb_id: u32,
+
+    linux_command: Option<&'static str>,
+    windows_command: Option<&'static str>,
+}
+
+impl ConsoleDefinition {
+    pub fn supports_linux(&self) -> bool {
+        self.linux_command.is_some()
+    }
+
+    pub fn get_linux_command(&self) -> Option<&str> {
+        self.linux_command
+    }
+
+    pub fn supports_windows(&self) -> bool {
+        self.windows_command.is_some()
+    }
+
+    pub fn get_windows_command(&self) -> Option<&str> {
+        self.windows_command
+    }
+
+    pub fn supports_extension(&self, extension: &str) -> bool {
+        self.extensions
+            .iter()
+            .any(|ext| ext.eq_ignore_ascii_case(extension))
+    }
 }
 
 // Frontend model
@@ -38,35 +69,97 @@ const CONSOLES: &[ConsoleDefinition] = &[
         id: 1,
         console: Console::NES,
         name: "NES",
-        extension: "nes",
+        extensions: &["nes"],
         igdb_id: 18,
+        linux_command: Some("nestopia"),
+        windows_command: None,
     },
+
     ConsoleDefinition {
         id: 2,
         console: Console::SNES,
         name: "SNES",
-        extension: "sfc",
+        extensions: &["sfc", "smc"],
         igdb_id: 19,
+        linux_command: Some("snes9x"),
+        windows_command: Some("snes9x-x64.exe"),
     },
+
     ConsoleDefinition {
         id: 3,
-        console: Console::GBA,
-        name: "GBA",
-        extension: "gba",
-        igdb_id: 24,
+        console: Console::GB,
+        name: "Game Boy",
+        extensions: &["gb"],
+        igdb_id: 33,
+        linux_command: Some("sameboy"),
+        windows_command: Some("sameboy.exe"),
     },
+
     ConsoleDefinition {
         id: 4,
+        console: Console::GBC,
+        name: "Game Boy Color",
+        extensions: &["gbc"],
+        igdb_id: 22,
+        linux_command: Some("sameboy"),
+        windows_command: Some("sameboy.exe"),
+    },
+
+    ConsoleDefinition {
+        id: 5,
+        console: Console::GBA,
+        name: "Game Boy Advance",
+        extensions: &["gba"],
+        igdb_id: 24,
+        linux_command: Some("mgba"),
+        windows_command: Some("mgba.exe"),
+    },
+
+    ConsoleDefinition {
+        id: 6,
+        console: Console::GENESIS,
+        name: "Sega Genesis",
+        extensions: &["md", "gen", "bin"],
+        igdb_id: 29,
+        linux_command: Some("blastem"),
+        windows_command: Some("blastem.exe"),
+    },
+
+    ConsoleDefinition {
+        id: 7,
+        console: Console::PS1,
+        name: "PlayStation",
+        extensions: &["cue", "bin", "chd", "m3u"],
+        igdb_id: 7,
+        linux_command: Some("duckstation-qt"),
+        windows_command: Some("duckstation-qt-x64-ReleaseLTCG.exe"),
+    },
+
+    ConsoleDefinition {
+        id: 8,
         console: Console::ARCADE,
         name: "Arcade",
-        extension: "tbd",
+        extensions: &["zip", "7z"],
         igdb_id: 0,
+        linux_command: Some("fbneo"),
+        windows_command: Some("fbneo64.exe"),
+    },
+
+    ConsoleDefinition {
+        id: 9,
+        console: Console::N64,
+        name: "Nintendo 64",
+        extensions: &["z64", "n64", "v64"],
+        igdb_id: 4,
+        linux_command: Some("mupen64plus"),
+        windows_command: Some("mupen64plus.exe"),
     },
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameInfo {
     pub name: String,
+    pub path: String,
     pub console: Console,
 }
 
@@ -360,7 +453,7 @@ pub fn get_games(folder: String) -> Result<Vec<GameInfo>, String> {
 
         let Some(console_info) = CONSOLES
             .iter()
-            .find(|c| c.extension.eq_ignore_ascii_case(ext))
+            .find(|c| c.supports_extension(ext))
         else {
             continue;
         };
@@ -371,6 +464,7 @@ pub fn get_games(folder: String) -> Result<Vec<GameInfo>, String> {
 
         games.push(GameInfo {
             name: name.to_string(),
+            path: path.to_string_lossy(),
             console: console_info.console,
         });
     }
@@ -378,12 +472,80 @@ pub fn get_games(folder: String) -> Result<Vec<GameInfo>, String> {
     Ok(games)
 }
 
-#[tauri::command]
-pub fn launch_game(game: GameInfo) {
-    println!("Launching {:?} game: {}", game.console, game.name);
+fn build_command(console: &ConsoleDefinition, rom: &str) -> Command {
+    #[cfg(target_os = "linux")]
+    let executable = console.get_linux_command().unwrap();
+
+    #[cfg(target_os = "windows")]
+    let executable = console.get_windows_command().unwrap();
+
+    let mut cmd = Command::new(executable);
+
+    match console.console {
+        Console::NES => {
+            cmd.arg("--fullscreen")
+                .arg(rom);
+        }
+
+        Console::SNES => {
+            cmd.arg("-fullscreen")
+                .arg(rom);
+        }
+
+        Console::GB | Console::GBC | Console::GBA => {
+            cmd.arg("-f")
+                .arg(rom);
+        }
+
+        Console::GENESIS => {
+            cmd.arg("-f")
+                .arg(rom);
+        }
+
+        Console::PS1 => {
+            cmd.arg("--fullscreen")
+                .arg(rom);
+        }
+
+        Console::ARCADE => {
+            cmd.arg("-fullscreen")
+                .arg(rom);
+        }
+
+        Console::N64 => {
+            cmd.arg("--fullscreen")
+                .arg(rom);
+        }
+    }
+
+    cmd
 }
 
 #[tauri::command]
-pub fn stop_emulator() {
-    println!("Stopping emulator");
+pub fn launch_game(game: GameInfo) -> Result<(), String> {
+    let console = CONSOLES
+        .iter()
+        .find(|c| c.console == game.console)
+        .ok_or("Unknown console")?;
+
+    let mut child = build_command(console, &game.path)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
+    *EMULATOR.lock().unwrap() = Some(child);
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn stop_emulator() -> Result<(), String> {
+    let mut emulator = EMULATOR.lock().unwrap();
+
+    if let Some(child) = emulator.as_mut() {
+        child.kill().map_err(|e| e.to_string())?;
+    }
+
+    *emulator = None;
+
+    Ok(())
 }
