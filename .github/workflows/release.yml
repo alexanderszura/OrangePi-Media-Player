@@ -6,27 +6,30 @@ on:
       - "v*"
 
 jobs:
-  release:
-    name: Build and Release
-
+  release-linux:
+    name: Build and Release (Linux)
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:20.04
+      env:
+        DEBIAN_FRONTEND: noninteractive 
+    
     permissions:
-      contents: write
-
+      contents: write 
+      
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: 'ubuntu-20.04'
-            args: ''                                   # Standard x86_64 Linux
-          - platform: 'ubuntu-20.04'
-            args: '--target aarch64-unknown-linux-gnu' # ARM64 Linux (Orange Pi)
-          - platform: 'windows-latest'
-            arch: x64
-            args: ''                                   # Windows x86_64
-
-    runs-on: ${{ matrix.platform }}
+          - args: ''                                   # Standard x86_64 Linux
+          - args: '--target aarch64-unknown-linux-gnu' # ARM64 Linux (Orange Pi)
 
     steps:
+      - name: Install basic tools
+        run: |
+          apt-get update
+          apt-get install -y sudo git curl wget build-essential ca-certificates
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -39,14 +42,10 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.platform == 'ubuntu-20.04' && 'aarch64-unknown-linux-gnu' || '' }}
+          targets: aarch64-unknown-linux-gnu
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-20.04'
         run: |
           sudo apt update
           sudo apt install -y \
@@ -82,10 +81,77 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          projectPath: Pigeon
-          tagName: ${{ github.ref_name }}
-          releaseName: Release ${{ github.ref_name }}
-          releaseBody: Automated release built via GitHub Actions.
+          projectPath: Pigeon 
+          tagName: ${{ github.ref_name }} 
+          releaseName: "Release ${{ github.ref_name }}"
+          releaseBody: "Automated release built via GitHub Actions."
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+
+  release-windows-mac:
+    name: Build and Release (Windows & Mac)
+    runs-on: ${{ matrix.platform }}
+    
+    permissions:
+      contents: write 
+      
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'windows-latest'
+            args: ''
+          # - platform: 'macos-latest'
+          #   args: '--target aarch64-apple-darwin'
+          # - platform: 'macos-latest'
+          #   args: '--target x86_64-apple-darwin'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Pigeon/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install npm packages
+        working-directory: Pigeon
+        run: npm ci
+
+      - name: Create Rust secrets
+        shell: bash 
+        run: |
+          cat > Pigeon/src-tauri/src/secrets.rs <<'EOF'
+          ${{ secrets.RUST_SECRETS }}
+          EOF
+
+      - name: Create TypeScript secrets
+        shell: bash
+        run: |
+          cat > Pigeon/src/secrets.ts <<'EOF'
+          ${{ secrets.TS_SECRETS }}
+          EOF
+
+      - name: Build and Release Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: Pigeon 
+          tagName: ${{ github.ref_name }} 
+          releaseName: "Release ${{ github.ref_name }}"
+          releaseBody: "Automated release built via GitHub Actions."
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
