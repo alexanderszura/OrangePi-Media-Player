@@ -17,13 +17,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - platform: 'macos-latest'
-          #   args: '--target aarch64-apple-darwin' # Apple Silicon (M1/M2/M3)
-          # - platform: 'macos-latest'
-          #   args: '--target x86_64-apple-darwin'  # Intel Macs
-          - platform: 'ubuntu-22.04'
+          - platform: 'ubuntu-20.04'
             args: ''                                   # Standard x86_64 Linux
-          - platform: 'ubuntu-22.04'
+          - platform: 'ubuntu-20.04'
             args: '--target aarch64-unknown-linux-gnu' # ARM64 Linux (Orange Pi)
           - platform: 'windows-latest'
             args: ''                                   # Windows x86_64
@@ -44,16 +40,15 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          # This specifically adds the Mac architectures only when running on a Mac runner
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.platform == 'ubuntu-20.04' && 'aarch64-unknown-linux-gnu' || '' }}
 
       - name: Install Linux dependencies
-        # This step ONLY runs when the matrix is currently on the Ubuntu runner
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-20.04'
         run: |
           sudo apt update
+          # Note: Changed to libwebkit2gtk-4.0-dev because 4.1 is not available on Ubuntu 20.04
           sudo apt install -y \
-            libwebkit2gtk-4.1-dev \
+            libwebkit2gtk-4.0-dev \
             libssl-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
@@ -65,7 +60,6 @@ jobs:
         run: npm ci
 
       - name: Create Rust secrets
-        # Windows uses Powershell by default, so we force bash for this cat command
         shell: bash 
         run: |
           cat > Pigeon/src-tauri/src/secrets.rs <<'EOF'
@@ -92,6 +86,4 @@ jobs:
           releaseBody: "Automated release built via GitHub Actions."
           releaseDraft: false
           prerelease: false
-          
-          # This passes the specific target arguments (like Apple Silicon vs Intel) to the Tauri CLI
           args: ${{ matrix.args }}
