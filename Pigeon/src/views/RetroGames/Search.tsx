@@ -21,6 +21,9 @@ export default function GameSearch() {
         if (value === "") {
             setGames([]);
         } else {
+            // setGames(await invoke("get_games", {
+            //     folder: settings.savePath + "/games/"
+            // }));
             setGames(
                 await invoke("search_games", {
                     name: value

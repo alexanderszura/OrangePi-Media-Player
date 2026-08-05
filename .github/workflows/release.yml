@@ -16,12 +16,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'ubuntu-20.04'
-            args: ''                                   # Standard x86_64 Linux
-          - platform: 'ubuntu-20.04'
-            args: '--target aarch64-unknown-linux-gnu' # ARM64 Linux (Orange Pi)
-          - platform: 'windows-latest'
-            args: ''                                   # Windows x86_64
+          # Linux x86_64
+          - platform: ubuntu-22.04
+            arch: x64
+            args: ""
+
+          # Linux ARM64 (Orange Pi)
+          - platform: ubuntu-22.04-arm
+            arch: arm64
+            args: ""
+
+          # Windows x86_64
+          - platform: windows-latest
+            arch: x64
+            args: ""
 
     runs-on: ${{ matrix.platform }}
 
@@ -42,15 +50,14 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.platform == 'ubuntu-20.04' && 'aarch64-unknown-linux-gnu' || '' }}
+          workspaces: Pigeon/src-tauri
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-20.04'
+        if: runner.os == 'Linux'
         run: |
           sudo apt update
-          # Note: Changed to libwebkit2gtk-4.0-dev because 4.1 is not available on Ubuntu 20.04
           sudo apt install -y \
-            libwebkit2gtk-4.0-dev \
+            libwebkit2gtk-4.1-dev \
             libssl-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
@@ -62,7 +69,7 @@ jobs:
         run: npm ci
 
       - name: Create Rust secrets
-        shell: bash 
+        shell: bash
         run: |
           cat > Pigeon/src-tauri/src/secrets.rs <<'EOF'
           ${{ secrets.RUST_SECRETS }}
