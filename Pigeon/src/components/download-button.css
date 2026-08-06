@@ -12,6 +12,8 @@
     color: var(--accent);
     cursor: pointer;
     transition: all 0.2s ease;
+
+    flex: 0 0 auto;
 }
 
 /* Hover state only when interactive */

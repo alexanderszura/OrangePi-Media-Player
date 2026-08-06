@@ -3,7 +3,7 @@
   flex-direction: column;
   gap: 10px;
   border-radius: var(--radius-md);
-  animation: fade-in-up 0.4s ease both;
+  /* animation: fade-in-up 0.4s ease both; */
 }
 
 .item-card__poster {

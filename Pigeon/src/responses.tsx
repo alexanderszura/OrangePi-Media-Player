@@ -201,6 +201,7 @@ export interface SeasonDetailsResponse {
   season_number: number;
   air_date?: string | null;
   episodes: SeasonEpisodeResponse[];
+  vote_average: number
 }
 
 export interface SeasonEpisodeResponse {
@@ -213,6 +214,7 @@ export interface SeasonEpisodeResponse {
   season_number: number;
   show_id: number;
   still_path?: string | null;
+  vote_average: number;
 }
 
 export interface SeasonDetails {
@@ -224,6 +226,7 @@ export interface SeasonDetails {
   season_number: number;
   release_date?: string | null;
   episodes: SeasonEpisode[];
+  vote_average: number
 }
 
 export interface SeasonEpisode {
@@ -236,6 +239,7 @@ export interface SeasonEpisode {
   season_number: number;
   show_id: number;
   still_path?: string | null;
+  vote_average: number;
 }
 
 export function toSeasonEpisode(
@@ -251,6 +255,7 @@ export function toSeasonEpisode(
     season_number: response.season_number,
     show_id: response.show_id,
     still_path: response.still_path,
+    vote_average: response.vote_average
   };
 }
 
@@ -266,6 +271,7 @@ export function toSeasonDetails(
     season_number: response.season_number,
     release_date: response.air_date,
     episodes: response.episodes.map(toSeasonEpisode),
+    vote_average: response.vote_average
   };
 }
 
@@ -367,6 +373,7 @@ export interface GameData {
   first_release_date?: number;
   platforms: ConsoleInfo[];
   cover?: string;
+  popularity_score?: number;
 }
 
 export enum GameImageType {

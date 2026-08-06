@@ -1,7 +1,8 @@
 mod download;
-mod emulator;
 mod secrets;
 mod settings;
+mod emulator;
+mod consoles;
 use tauri_plugin_updater::Builder;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -17,11 +18,9 @@ pub fn run() {
             download::get_file_info,
             settings::get_settings,
             settings::save_settings,
-            emulator::get_games,
-            emulator::launch_game,
-            emulator::stop_emulator,
-            emulator::search_games,
-            emulator::game_info
+            emulator::quick_search_roms,
+            emulator::search_roms,
+            emulator::game_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

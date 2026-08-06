@@ -18,10 +18,10 @@ export function GameCard({ game }: GameCardProps) {
         className="item-card__poster"
         role="button"
         tabIndex={0}
-        onClick={() => navigate(`/game/${game.id}`)}
+        onClick={() => navigate(`/game/${game.id}`, { state: { game } })}
         onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
-              navigate(`/game/${game.id}`);
+              navigate(`/game/${game.id}`, { state: { game } });
             }
           }
         }

@@ -6,6 +6,20 @@
    so focus states are always visible.
    ========================================================== */
 
+/* Disable all animations and transitions */
+*,
+*::before,
+*::after {
+  /* animation: none !important; */
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* Disable smooth scrolling */
+html {
+  scroll-behavior: auto;
+}
+
 @font-face {
   font-family: "Inter";
   src: url("../assets/fonts/Inter_18pt-Regular.ttf") format("truetype");
@@ -335,7 +349,7 @@ input, select, button {
   to { transform: rotate(360deg); }
 }
 
-@keyframes fade-in-up {
+/* @keyframes fade-in-up {
   from {
     opacity: 0;
     transform: translateY(14px);
@@ -344,7 +358,7 @@ input, select, button {
     opacity: 1;
     transform: translateY(0);
   }
-}
+} */
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

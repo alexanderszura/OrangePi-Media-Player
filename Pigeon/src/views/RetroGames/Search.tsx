@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as response from "../../responses";
 import "../../styles/search.css";
 import { useSettings } from "../../SettingsContext";
@@ -12,25 +12,58 @@ export default function GameSearch() {
     const [search, setSearch] = useState("");
     const [games, setGames] = useState<response.GameData[]>([]);
     const [page, setPage] = useState(0);
+    const searchRequestId = useRef(0);
 
     const maxPages = Math.ceil(games.length / settings.maxTitlesPerPage);
 
-    async function updateSearch(value: string) {
-        setSearch(value);
+    useEffect(() => {
+        const value = search.trim();
+        const requestId = searchRequestId.current + 1;
+        searchRequestId.current = requestId;
+        setPage(0);
 
         if (value === "") {
             setGames([]);
-        } else {
-            // setGames(await invoke("get_games", {
-            //     folder: settings.savePath + "/games/"
-            // }));
-            setGames(
-                await invoke("search_games", {
-                    name: value
-                })
-            );
+            return;
         }
-    }
+
+        let canceled = false;
+        const limit = settings.maxTitlesPerPage * 5;
+        const payload = {
+            name: value,
+            limit,
+            savePath: settings.savePath
+        };
+
+        async function quickSearch() {
+            try {
+                const quickGames = await invoke<response.GameData[]>("quick_search_roms", payload);
+                if (!canceled && searchRequestId.current === requestId) {
+                    setGames(quickGames);
+                }
+            } catch (error) {
+                console.error("Quick ROM search failed", error);
+            }
+        }
+
+        quickSearch();
+
+        const enrichTimeout = window.setTimeout(async () => {
+            try {
+                const enrichedGames = await invoke<response.GameData[]>("search_roms", payload);
+                if (!canceled && searchRequestId.current === requestId) {
+                    setGames(enrichedGames);
+                }
+            } catch (error) {
+                console.error("ROM metadata search failed", error);
+            }
+        }, 1000);
+
+        return () => {
+            canceled = true;
+            window.clearTimeout(enrichTimeout);
+        };
+    }, [search, settings.maxTitlesPerPage, settings.savePath]);
 
     function rightPage() {
         setPage((page + 1) % maxPages);
@@ -52,15 +85,12 @@ export default function GameSearch() {
                     value={search}
                     autoComplete="off"
                     placeholder="Search Retro Games"
-                    onChange={async (e) => updateSearch(e.target.value)}
+                    onChange={(e) => setSearch(e.target.value)}
                 />
                 <Keyboard
-                    keyCallback={(key) => updateSearch(search + key)}
-                    delCallback={() => {
-                        if (search.length > 0)
-                            updateSearch(search.substring(0, search.length - 1))
-                    }}
-                    clearCallback={() => updateSearch("")}
+                    keyCallback={(key) => setSearch((currentSearch) => currentSearch + key)}
+                    delCallback={() => setSearch((currentSearch) => currentSearch.substring(0, currentSearch.length - 1))}
+                    clearCallback={() => setSearch("")}
                 />
             </div>
 

@@ -5,6 +5,7 @@
   padding: 10px 12px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
+  cursor: pointer; 
   /* transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease; */
 }
 
@@ -60,4 +61,15 @@
 .episode-runtime {
   font-size: 0.8rem;
   color: var(--text-faint);
+}
+
+.episode-overview {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-faint);
+  line-height: 1.35;
+
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
 }

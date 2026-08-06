@@ -1,9 +1,11 @@
-import { useLoaderData, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { invoke } from "@tauri-apps/api/core";
 import { gameImagePath } from "../../api";
 import { GameData, GameImageType } from "../../responses";
 import { FaArrowLeft, FaCirclePlay } from "react-icons/fa6";
+import { useSettings } from "../../SettingsContext";
 import "../../styles/detail.css";
-import { invoke } from "@tauri-apps/api/core";
 
 function unixToDate(unix: number): string {
     const date = new Date(unix * 1000);
@@ -17,7 +19,46 @@ function unixToDate(unix: number): string {
 
 export default function GameDetails() {
     const navigate = useNavigate();
-    const titleInfo = useLoaderData() as GameData;
+    const location = useLocation();
+    const { id } = useParams();
+    const { settings } = useSettings();
+
+    // GameCard hands us the GameData it already fetched/cached, so the
+    // common path renders instantly with no invoke call at all.
+    const passedGame = (location.state as { game?: GameData } | null)?.game;
+    const [titleInfo, setTitleInfo] = useState<GameData | null>(passedGame ?? null);
+
+    useEffect(() => {
+        // Only reached via a direct link or a page refresh, where we land
+        // here without navigation state. game_info checks the on-disk ROM
+        // cache before ever hitting IGDB, so this stays cheap too.
+        if (passedGame || !id) return;
+
+        let canceled = false;
+
+        async function loadFallback() {
+            try {
+                const game = await invoke<GameData>("game_info", {
+                    id: Number(id),
+                    savePath: settings.savePath ?? "",
+                });
+
+                if (!canceled) setTitleInfo(game);
+            } catch (error) {
+                console.error("Failed to load game info", error);
+            }
+        }
+
+        loadFallback();
+
+        return () => {
+            canceled = true;
+        };
+    }, [id, passedGame, settings.savePath]);
+
+    if (!titleInfo) {
+        return <div className="detail-view" />;
+    }
 
     const release = unixToDate(titleInfo.first_release_date ?? -1);
 
