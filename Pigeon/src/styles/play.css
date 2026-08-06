@@ -108,7 +108,7 @@
   pointer-events: none;
   transform: translate(-50%, -50%) scale(0.7);
   opacity: 0;
-  animation: player-flash-pop 0.55s ease both;
+  /* animation: player-flash-pop 0.55s ease both; */
 }
 
 @keyframes player-flash-pop {

@@ -12,12 +12,13 @@ import MediaSearch from "./views/Media/Search";
 import Play from "./views/Media/Play";
 import TVDetails from "./views/Media/TVDetails";
 import MovieDetails from "./views/Media/MovieDetails";
-import { fetchTitleInfo } from "./api";
+import { fetchSeasonInfo, fetchTitleInfo } from "./api";
 import GameDetails from "./views/RetroGames/GameDetails";
 import { invoke } from "@tauri-apps/api/core";
 import { checkForUpdates } from "./updater";
 import { Update } from "@tauri-apps/plugin-updater";
 import { MediaProvider } from "./MediaContext";
+import EpisodeDetails from "./views/Media/EpisodeDetails";
 
 const router = createBrowserRouter([
   {
@@ -37,6 +38,14 @@ const router = createBrowserRouter([
         element: <TVDetails />,
         loader: async ({ params }) => {
           return await fetchTitleInfo("tv", Number(params.id));
+        },
+      },
+      {
+        path: "title/TV/:id/:season/:episode",
+        element: <EpisodeDetails />,
+        loader: async ({ params }) => {
+          // TODO: Fetch just the episode data
+          return await fetchSeasonInfo(Number(params.id), Number(params.season));
         },
       },
       { 

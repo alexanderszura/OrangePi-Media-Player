@@ -35,29 +35,36 @@ impl Default for Settings {
     }
 }
 
-fn settings_path(app: &tauri::AppHandle) -> std::path::PathBuf {
-    app.path().app_data_dir().unwrap().join("settings.json")
+fn settings_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data directory: {}", e))?;
+    Ok(dir.join("settings.json"))
 }
 
 #[tauri::command]
-pub fn get_settings(app: tauri::AppHandle) -> Settings {
-    let path = settings_path(&app);
+pub fn get_settings(app: tauri::AppHandle) -> Result<Settings, String> {
+    let path = settings_path(&app)?;
 
     if !path.exists() {
-        return Settings::default();
+        return Ok(Settings::default());
     }
 
-    let data = fs::read_to_string(path).unwrap();
-    serde_json::from_str(&data).unwrap_or_default()
+    let data = fs::read_to_string(&path).map_err(|e| format!("Failed to read settings: {}", e))?;
+    Ok(serde_json::from_str(&data).unwrap_or_default())
 }
 
 #[tauri::command]
-pub fn save_settings(app: tauri::AppHandle, settings: Settings) {
-    let path = settings_path(&app);
+pub fn save_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), String> {
+    let path = settings_path(&app)?;
 
-    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("Failed to create settings directory: {}", e))?;
+    }
 
-    let data = serde_json::to_string_pretty(&settings).unwrap();
+    let data = serde_json::to_string_pretty(&settings)
+        .map_err(|e| format!("Failed to serialize settings: {}", e))?;
 
-    fs::write(path, data).unwrap();
+    fs::write(&path, data).map_err(|e| format!("Failed to write settings: {}", e))
 }

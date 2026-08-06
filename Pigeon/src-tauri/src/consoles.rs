@@ -1,3 +1,5 @@
+use serde::{ Deserialize, Serialize };
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Console {
     NES,
@@ -18,12 +20,12 @@ pub struct ConsoleInfo {
 }
 
 #[derive(Debug, Clone)]
-struct ConsoleDefinition {
-    id: u32,
+pub struct ConsoleDefinition {
+    pub id: u32,
     console: Console,
-    name: &'static str,
+    pub name: &'static str,
     extensions: &'static [&'static str],
-    igdb_id: u32,
+    pub igdb_id: u32,
 
     linux_command: Option<&'static str>,
     windows_command: Option<&'static str>,
@@ -53,7 +55,7 @@ impl ConsoleDefinition {
     }
 }
 
-const CONSOLES: &[ConsoleDefinition] = &[
+pub const CONSOLES: &[ConsoleDefinition] = &[
     ConsoleDefinition {
         id: 1,
         console: Console::NES,

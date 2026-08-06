@@ -51,6 +51,7 @@ export default function TVDetails() {
                         <span>{titleInfo.release_date?.split("-")[0]}</span>
                         <span>{titleInfo.genres?.map((g) => g.name).join(", ")}</span>
                         <span>{seasonCount} Season{seasonCount === 1 ? "" : "s"}</span>
+                        <span>{Math.round(titleInfo.vote_average * 10) / 10}/10</span>
                     </div>
                 </div>
 
@@ -71,6 +72,16 @@ export default function TVDetails() {
                         }
                     />
                 </div>
+
+                <h3> {season?.name} </h3>
+
+                <div className="detail-meta">
+                    <span>{season?.release_date?.split("-")[0]}</span>
+                    <span>{season?.release_date}</span>
+                    <span>{Math.round((season?.vote_average ?? 0) * 10) / 10}/10</span>
+                </div>
+
+                <p className="detail-overview">{season?.overview}</p>
 
                 <div className="episodes-container">
                     {season == null ? (

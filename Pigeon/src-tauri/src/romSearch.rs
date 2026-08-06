@@ -1,13 +1,20 @@
-use crate::secrets::CLIENT_ID;
+use crate::secrets::{ CLIENT_ID, CLIENT_SECRET };
 use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize };
 use serde_json::json;
-use sha1::{Digest, Sha1};
+use sha1::{ Digest, Sha1 };
 use std::fs;
-use std::path::{Path, PathBuf};
-use crate::consoles::{ Console, ConsoleInfo, ConsoleDefinition, CONSOLES }
+use std::sync::{ Mutex, OnceLock };
+use std::path::{ Path, PathBuf };
+use crate::consoles::{ ConsoleInfo, CONSOLES };
+use std::time::{ Duration, Instant };
 
 const HASHEOUS_LOOKUP_URL: &str = "https://hasheous.org/api/v1/Lookup/ByHash/";
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Cover {
+    pub image_id: String,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameData {
@@ -51,6 +58,20 @@ struct IgdbGame {
     platforms: Option<Vec<u32>>,
     cover: Option<Cover>,
 }
+
+#[derive(Debug, Deserialize)]
+struct TokenResponse {
+    access_token: String,
+    expires_in: u64,
+}
+
+struct CachedToken {
+    token: String,
+    expires_at: Instant,
+}
+
+static TOKEN_CACHE: Mutex<Option<CachedToken>> = Mutex::new(None);
+static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
 #[tauri::command]
 pub async fn search_roms(
@@ -162,12 +183,12 @@ pub fn hash_file(file_path: &Path) -> Result<FileHashes, String> {
 
     let mut hasher = Sha1::new();
     hasher.update(&data);
-    let full = format!("{:x}", hasher.finalize());
+    let full = hex::encode(hasher.finalize());
 
     let headerless = if data.len() >= 16 && &data[0..4] == b"NES\x1a" {
         let mut header_hasher = Sha1::new();
         header_hasher.update(&data[16..]);
-        Some(format!("{:x}", header_hasher.finalize()))
+        Some(hex::encode(header_hasher.finalize()))
     } else {
         None
     };

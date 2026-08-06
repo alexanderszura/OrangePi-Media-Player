@@ -22,8 +22,10 @@ export default function GameSearch() {
             setGames([]);
         } else {
             setGames(
-                await invoke("search_games", {
-                    name: value
+                await invoke("search_roms", {
+                    name: value,
+                    limit: settings.maxTitlesPerPage * 5,
+                    savePath: settings.savePath
                 })
             );
         }
