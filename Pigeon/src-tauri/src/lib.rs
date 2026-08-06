@@ -1,7 +1,7 @@
 mod download;
 mod secrets;
 mod settings;
-mod romSearch;
+mod emulator;
 mod consoles;
 use tauri_plugin_updater::Builder;
 
@@ -18,7 +18,9 @@ pub fn run() {
             download::get_file_info,
             settings::get_settings,
             settings::save_settings,
-            romSearch::search_roms,
+            emulator::quick_search_roms,
+            emulator::search_roms,
+            emulator::game_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

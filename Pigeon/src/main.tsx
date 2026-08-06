@@ -56,13 +56,14 @@ const router = createBrowserRouter([
         },
       },
       {
+        // No loader here on purpose: GameCard passes the already-fetched
+        // GameData via navigation state, so the common case (clicking a
+        // card) needs zero invoke calls. GameDetails reads that state
+        // directly via useLocation and only falls back to an invoke
+        // (itself cache-first on the Rust side) when it's missing, e.g.
+        // a direct link or a page refresh.
         path: "game/:id",
         element: <GameDetails />,
-        loader: async ({ params }) => {
-          return await invoke("game_info", {
-            id: Number(params.id)
-          });
-        }
       }
     ],
   },

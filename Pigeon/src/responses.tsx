@@ -373,6 +373,7 @@ export interface GameData {
   first_release_date?: number;
   platforms: ConsoleInfo[];
   cover?: string;
+  popularity_score?: number;
 }
 
 export enum GameImageType {
