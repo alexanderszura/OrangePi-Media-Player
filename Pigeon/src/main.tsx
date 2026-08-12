@@ -16,7 +16,6 @@ import { fetchSeasonInfo, fetchTitleInfo } from "./api";
 import GameDetails from "./views/RetroGames/GameDetails";
 import { MediaProvider } from "./MediaContext";
 import EpisodeDetails from "./views/Media/EpisodeDetails";
-import RomCacheGate from "./components/RomCacheGate";
 
 const router = createBrowserRouter([
   {
@@ -74,9 +73,7 @@ if (root) {
     <React.StrictMode>
       <SettingsProvider>
         <MediaProvider> 
-          <RomCacheGate>
-            <RouterProvider router={router} />
-          </RomCacheGate>
+          <RouterProvider router={router} />
         </MediaProvider>
       </SettingsProvider>
     </React.StrictMode>

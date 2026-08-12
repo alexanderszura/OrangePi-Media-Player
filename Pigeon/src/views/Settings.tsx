@@ -5,7 +5,7 @@ import "../styles/settings.css";
 import TVDropdown from "../components/dropdown";
 
 export default function Settings() {
-    const { settings, setSavePath, setPreferredQuality, setFallbackStrategy, setMaxTitlePerPage } = useSettings();
+    const { settings, setSavePath, setPreferredQuality, setFallbackStrategy, setMaxTitlePerPage, setEnableRetroGames } = useSettings();
 
     return (
         <div className="page settings-view">
@@ -82,6 +82,21 @@ export default function Settings() {
                     autoComplete="off"
                     onChange={async (e) => setMaxTitlePerPage(e.target.valueAsNumber)}
                 />
+            </div>
+
+            <div className="settings-row">
+                <h2>Retro Games</h2>
+                <label className="settings-toggle">
+                    <input
+                        type="checkbox"
+                        checked={settings.enableRetroGames}
+                        onChange={async (event) => await setEnableRetroGames(event.currentTarget.checked)}
+                    />
+                    <span className="settings-toggle__track" aria-hidden="true">
+                        <span className="settings-toggle__thumb" />
+                    </span>
+                    <strong>Enable Retro Games</strong>
+                </label>
             </div>
         </div>
     );

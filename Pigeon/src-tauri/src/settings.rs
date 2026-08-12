@@ -23,6 +23,8 @@ pub struct Settings {
     pub preferredQuality: MediaResolution,
     pub fallbackStrategy: MediaFallbackStrategy,
     pub maxTitlesPerPage: u8,
+    #[serde(default)]
+    pub enableRetroGames: bool,
 }
 
 impl Default for Settings {
@@ -32,6 +34,7 @@ impl Default for Settings {
             preferredQuality: MediaResolution::K1080,
             fallbackStrategy: MediaFallbackStrategy::Highest,
             maxTitlesPerPage: 10,
+            enableRetroGames: false,
         }
     }
 }

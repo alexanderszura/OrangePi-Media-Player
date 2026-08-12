@@ -46,3 +46,60 @@
 .select-dropdown {
   width: 240px;
 }
+
+.settings-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.settings-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.settings-toggle__track {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 58px;
+  height: 32px;
+  padding: 3px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  box-shadow: inset 0 1px 6px rgba(0, 0, 0, 0.38);
+}
+
+.settings-toggle__thumb {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  transform: translateX(0);
+  transition: transform 0.16s ease, background 0.16s ease !important;
+}
+
+.settings-toggle input:checked + .settings-toggle__track {
+  border-color: rgba(255, 157, 61, 0.45);
+  background: rgba(255, 157, 61, 0.14);
+  box-shadow: var(--shadow-glow-accent);
+}
+
+.settings-toggle input:checked + .settings-toggle__track .settings-toggle__thumb {
+  background: var(--accent-soft);
+  transform: translateX(26px);
+}
+
+.settings-toggle input:focus-visible + .settings-toggle__track {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}

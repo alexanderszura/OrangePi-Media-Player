@@ -59,7 +59,7 @@ export default function RomCacheGate({
       return;
     }
 
-    if (!settings.savePath) {
+    if (!settings.savePath || !settings.enableRetroGames) {
       setIsReady(true);
       return;
     }
@@ -69,6 +69,15 @@ export default function RomCacheGate({
 
     async function runBootCache() {
       try {
+        setError(null);
+        setIsReady(false);
+        setProgress({
+          total: 0,
+          completed: 0,
+          current: null,
+          status: "Preparing ROM metadata cache",
+        });
+
         unlisten = await listen<RomCacheProgress>("rom-cache-progress", (event) => {
           if (active) {
             setProgress(event.payload);
@@ -102,7 +111,7 @@ export default function RomCacheGate({
       active = false;
       unlisten?.();
     };
-  }, [isLoaded, settings.savePath]);
+  }, [isLoaded, settings.enableRetroGames, settings.savePath]);
 
   if (isReady) {
     return <>{children}</>;

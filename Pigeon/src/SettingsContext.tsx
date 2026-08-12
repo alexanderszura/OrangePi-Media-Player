@@ -38,6 +38,7 @@ interface Settings {
     preferredQuality: MediaResolution;
     fallbackStrategy: MediaFallbackStrategy;
     maxTitlesPerPage: number;
+    enableRetroGames: boolean;
 }
 
 interface SettingsContextType {
@@ -50,6 +51,7 @@ interface SettingsContextType {
     setPreferredQuality: (quality: MediaResolution) => Promise<void>;
     setFallbackStrategy: (strategy: MediaFallbackStrategy) => Promise<void>;
     setMaxTitlePerPage: (num: number) => Promise<void>;
+    setEnableRetroGames: (enabled: boolean) => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsContextType | null>(null);
@@ -64,6 +66,7 @@ export function SettingsProvider({
         preferredQuality: MediaResolution.k1080,
         fallbackStrategy: MediaFallbackStrategy.HIGHEST,
         maxTitlesPerPage: 10,
+        enableRetroGames: false,
     });
     const [isLoaded, setIsLoaded] = useState(false);
     const [operatingSystem, setOperatingSystem] = useState<OperatingSystem | null>(null);
@@ -80,7 +83,8 @@ export function SettingsProvider({
                     savePath: saved.savePath,
                     preferredQuality: saved.preferredQuality,
                     fallbackStrategy: saved.fallbackStrategy,
-                    maxTitlesPerPage: saved.maxTitlesPerPage
+                    maxTitlesPerPage: saved.maxTitlesPerPage,
+                    enableRetroGames: saved.enableRetroGames ?? false,
                 });
                 setOperatingSystem(os);
             } finally {
@@ -107,7 +111,8 @@ export function SettingsProvider({
                 savePath: newSettings.savePath,
                 preferredQuality: newSettings.preferredQuality,
                 fallbackStrategy: newSettings.fallbackStrategy,
-                maxTitlesPerPage: newSettings.maxTitlesPerPage
+                maxTitlesPerPage: newSettings.maxTitlesPerPage,
+                enableRetroGames: newSettings.enableRetroGames,
             },
         });
     }
@@ -124,6 +129,9 @@ export function SettingsProvider({
     const setMaxTitlePerPage = (num: number) =>
         updateSetting("maxTitlesPerPage", num);
 
+    const setEnableRetroGames = (enabled: boolean) =>
+        updateSetting("enableRetroGames", enabled);
+
     return (
         <SettingsContext.Provider
             value={{
@@ -136,6 +144,7 @@ export function SettingsProvider({
                 setPreferredQuality,
                 setFallbackStrategy,
                 setMaxTitlePerPage,
+                setEnableRetroGames,
             }}
         >
             {children}

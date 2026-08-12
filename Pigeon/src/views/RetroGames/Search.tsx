@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as response from "../../responses";
 import "../../styles/search.css";
 import { useSettings } from "../../SettingsContext";
-import { FaArrowLeftLong, FaArrowRightLong } from "react-icons/fa6";
+import { FaArrowLeftLong, FaArrowRightLong, FaGamepad } from "react-icons/fa6";
 import { invoke } from "@tauri-apps/api/core";
 import Keyboard from "../../components/keyboardCard";
 import { GameCard } from "../../components/gameCard";
@@ -71,6 +71,17 @@ export default function GameSearch() {
 
     function leftPage() {
         setPage((page - 1) % maxPages);
+    }
+
+    if (!settings.enableRetroGames) {
+        return (
+            <div className="search-view search-view--disabled">
+                <div className="search-empty">
+                    <FaGamepad />
+                    <span>Retro Games is disabled in Settings.</span>
+                </div>
+            </div>
+        );
     }
 
     return (

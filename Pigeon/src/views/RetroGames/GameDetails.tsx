@@ -32,7 +32,7 @@ export default function GameDetails() {
         // Only reached via a direct link or a page refresh, where we land
         // here without navigation state. game_info checks the on-disk ROM
         // cache before ever hitting IGDB, so this stays cheap too.
-        if (passedGame || !id) return;
+        if (passedGame || !id || !settings.enableRetroGames) return;
 
         let canceled = false;
 
@@ -54,7 +54,7 @@ export default function GameDetails() {
         return () => {
             canceled = true;
         };
-    }, [id, passedGame, settings.savePath]);
+    }, [id, passedGame, settings.enableRetroGames, settings.savePath]);
 
     if (!titleInfo) {
         return <div className="detail-view" />;
