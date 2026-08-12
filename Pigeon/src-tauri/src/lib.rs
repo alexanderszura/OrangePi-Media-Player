@@ -21,7 +21,6 @@ pub fn run() {
             settings::save_settings,
             platform::get_operating_system,
             emulator::cache_rom_metadata,
-            emulator::quick_search_roms,
             emulator::search_roms,
             emulator::game_info,
         ])

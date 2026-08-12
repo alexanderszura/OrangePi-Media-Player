@@ -48,12 +48,6 @@ struct CachedRomData {
     game: GameData,
 }
 
-#[derive(Debug, Clone)]
-struct RomMatch {
-    path: PathBuf,
-    game: GameData,
-}
-
 #[derive(Debug, Deserialize)]
 struct HasheousMetadataItem {
     #[serde(rename = "objectType")]
@@ -299,178 +293,32 @@ pub async fn search_roms(
     }
 
     let roms_dir = PathBuf::from(&save_path).join("roms");
-    fs::create_dir_all(&roms_dir).map_err(|e| {
-        format!(
-            "Failed to create roms directory {}: {}",
-            roms_dir.display(),
-            e
-        )
-    })?;
-    let cache_dir = ensure_rom_cache_dir(&roms_dir)?;
+    let cache_dir = roms_dir.join(ROM_CACHE_DIR_NAME);
 
-    // 1. Find files on disk whose name matches the search term.
-    let mut matches: Vec<RomMatch> = Vec::new();
-    find_matching_rom_files(&roms_dir, &search_term, limit as usize, &mut matches)?;
-
-    if matches.is_empty() {
+    if !cache_dir.exists() {
         return Ok(Vec::new());
     }
 
-    // 2. Hash each matched file and resolve it to an IGDB id via Hasheous.
-    let mut igdb_ids: Vec<u32> = Vec::new();
-    let mut resolved_ids_by_match: Vec<Option<u32>> = vec![None; matches.len()];
-    let mut cached_games_by_match: Vec<Option<GameData>> = vec![None; matches.len()];
-    let mut hashes_by_match: Vec<Option<FileHashes>> = vec![None; matches.len()];
+    let mut game_entries = read_matching_cached_rom_entries(&cache_dir, &search_term)?;
+    let mut games = dedupe_game_entries(game_entries.drain(..).collect());
+    games.truncate(limit as usize);
 
-    for (index, rom_match) in matches.iter().enumerate() {
-        let path_for_hash = rom_match.path.clone();
-        let hashes = match tokio::task::spawn_blocking(move || hash_file(&path_for_hash)).await {
-            Ok(Ok(h)) => h,
-            Ok(Err(e)) => {
-                eprintln!("Failed to hash {}: {}", rom_match.path.display(), e);
-                continue;
-            }
-            Err(e) => {
-                eprintln!(
-                    "Hashing task panicked for {}: {}",
-                    rom_match.path.display(),
-                    e
-                );
-                continue;
-            }
-        };
-
-        hashes_by_match[index] = Some(hashes.clone());
-
-        if let Some(cached_game) = read_cached_rom_data(&cache_dir, &rom_match.path, &hashes) {
-            cached_games_by_match[index] = Some(cached_game);
-            continue;
-        }
-
-        match find_igdb_id_from_hash(&hashes).await {
-            Ok(Some(id)) => {
-                resolved_ids_by_match[index] = Some(id);
-                if !igdb_ids.contains(&id) {
-                    igdb_ids.push(id);
-                }
-            }
-            Ok(None) => {
-                // eprintln!("No IGDB match found for {}", rom_match.path.display());
-            }
-            Err(e) => {
-                eprintln!(
-                    "Hasheous lookup failed for {}: {}",
-                    rom_match.path.display(),
-                    e
-                );
-            }
-        }
-    }
-
-    if igdb_ids.is_empty() {
-        let game_entries = matches
-            .into_iter()
-            .enumerate()
-            .map(|(index, rom_match)| {
-                let game = cached_games_by_match[index].clone().unwrap_or_else(|| {
-                    write_cached_rom_data(
-                        &cache_dir,
-                        &rom_match.path,
-                        hashes_by_match[index].as_ref(),
-                        &rom_match.game,
-                    );
-                    rom_match.game
-                });
-
-                (game, hashes_by_match[index].clone())
-            })
-            .collect();
-
-        return Ok(dedupe_game_entries(game_entries));
-    }
-
-    // 3. Fetch metadata for every matched id in a single IGDB call.
-    let games_by_id: HashMap<u32, GameData> = query_igdb(igdb_ids)
-        .await?
-        .into_iter()
-        .map(|game| (game.id as u32, game))
-        .collect();
-
-    let game_entries = matches
-        .into_iter()
-        .enumerate()
-        .map(|(index, rom_match)| {
-            if let Some(cached_game) = &cached_games_by_match[index] {
-                return (cached_game.clone(), hashes_by_match[index].clone());
-            }
-
-            let game = resolved_ids_by_match[index]
-                .and_then(|id| games_by_id.get(&id).cloned())
-                .unwrap_or_else(|| rom_match.game.clone());
-
-            write_cached_rom_data(
-                &cache_dir,
-                &rom_match.path,
-                hashes_by_match[index].as_ref(),
-                &game,
-            );
-
-            (game, hashes_by_match[index].clone())
-        })
-        .collect::<Vec<_>>();
-
-    Ok(dedupe_game_entries(game_entries))
-}
-
-#[tauri::command]
-pub fn quick_search_roms(
-    name: String,
-    limit: u32,
-    save_path: String,
-) -> Result<Vec<GameData>, String> {
-    let search_term = name.trim().to_lowercase();
-    if search_term.is_empty() || limit == 0 {
-        return Ok(Vec::new());
-    }
-
-    let roms_dir = PathBuf::from(&save_path).join("roms");
-    fs::create_dir_all(&roms_dir).map_err(|e| {
-        format!(
-            "Failed to create roms directory {}: {}",
-            roms_dir.display(),
-            e
-        )
-    })?;
-    ensure_rom_cache_dir(&roms_dir)?;
-
-    let mut matches: Vec<RomMatch> = Vec::new();
-    find_matching_rom_files(&roms_dir, &search_term, limit as usize, &mut matches)?;
-
-    Ok(matches
-        .into_iter()
-        .map(|rom_match| rom_match.game)
-        .collect())
+    Ok(games)
 }
 
 /// Fallback lookup used only when the frontend navigates to a game's detail
 /// page without already having the `GameData` in hand (e.g. a direct link
 /// or a page refresh). Always checks the on-disk ROM cache first, since
 /// that data was already fetched/hashed during a prior `search_roms` call.
-/// Only reaches out to IGDB if nothing cached matches this id.
+/// Returns an empty fallback if nothing cached matches this id. Network
+/// metadata calls happen only during cache_rom_metadata.
 #[tauri::command]
-pub async fn game_info(id: u64, save_path: String) -> Result<GameData, String> {
+pub fn game_info(id: u64, save_path: String) -> Result<GameData, String> {
     let roms_dir = PathBuf::from(&save_path).join("roms");
     let cache_dir = roms_dir.join(ROM_CACHE_DIR_NAME);
 
     if let Some(game) = find_cached_game_by_id(&cache_dir, id) {
         return Ok(game);
-    }
-
-    if id <= u32::MAX as u64 && !is_local_game_id(id) {
-        let mut games = query_igdb(vec![id as u32]).await?;
-        if let Some(game) = games.pop() {
-            return Ok(game);
-        }
     }
 
     Ok(blank_game_data("", None))
@@ -505,59 +353,50 @@ fn find_cached_game_by_id(cache_dir: &Path, id: u64) -> Option<GameData> {
     None
 }
 
-/// Recursively walk `dir`, collecting files whose stem contains `needle`
-/// (already lower-cased), stopping once `limit` matches are found.
-fn find_matching_rom_files(
-    dir: &Path,
-    needle: &str,
-    limit: usize,
-    out: &mut Vec<RomMatch>,
-) -> Result<(), String> {
-    if out.len() >= limit {
-        return Ok(());
-    }
-
-    let entries = fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
+fn read_matching_cached_rom_entries(
+    cache_dir: &Path,
+    search_term: &str,
+) -> Result<Vec<(GameData, Option<FileHashes>)>, String> {
+    let entries = fs::read_dir(cache_dir)
+        .map_err(|e| format!("Failed to read ROM cache {}: {}", cache_dir.display(), e))?;
+    let mut matches = Vec::new();
 
     for entry in entries {
-        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        let entry = entry.map_err(|e| format!("Failed to read ROM cache entry: {}", e))?;
         let path = entry.path();
 
-        if path.is_dir() {
-            if path
-                .file_name()
-                .and_then(|s| s.to_str())
-                .map(|name| name.eq_ignore_ascii_case(ROM_CACHE_DIR_NAME))
-                .unwrap_or(false)
-            {
-                continue;
-            }
-
-            find_matching_rom_files(&path, needle, limit, out)?;
-        } else if path.is_file() {
-            let file_stem = path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or_default()
-                .to_lowercase();
-
-            if file_stem.contains(needle) {
-                out.push(RomMatch {
-                    game: blank_game_data_from_path(&path),
-                    path,
-                });
-            }
+        if path.extension().and_then(|s| s.to_str()) != Some("json") {
+            continue;
         }
 
-        if out.len() >= limit {
-            break;
+        let data = fs::read_to_string(&path)
+            .map_err(|e| format!("Failed to read ROM cache {}: {}", path.display(), e))?;
+        let cached = serde_json::from_str::<CachedRomData>(&data)
+            .map_err(|e| format!("Failed to parse ROM cache {}: {}", path.display(), e))?;
+
+        let source_name = Path::new(&cached.source_path)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default()
+            .to_lowercase();
+        let game_name = cached.game.name.to_lowercase();
+
+        if game_name.contains(search_term) || source_name.contains(search_term) {
+            matches.push((
+                cached.game,
+                Some(FileHashes {
+                    full: cached.full_hash,
+                    headerless: cached.headerless_hash,
+                }),
+            ));
         }
     }
 
-    Ok(())
+    Ok(matches)
 }
 
+/// Recursively walk `dir`, collecting files whose stem contains `needle`
+/// (already lower-cased), stopping once `limit` matches are found.
 fn collect_rom_files(dir: &Path) -> Result<Vec<PathBuf>, String> {
     let mut roms = Vec::new();
     collect_rom_files_in_dir(dir, &mut roms)?;
@@ -677,22 +516,6 @@ fn ensure_rom_cache_dir(roms_dir: &Path) -> Result<PathBuf, String> {
         )
     })?;
     Ok(cache_dir)
-}
-
-fn read_cached_rom_data(
-    cache_dir: &Path,
-    rom_path: &Path,
-    hashes: &FileHashes,
-) -> Option<GameData> {
-    let cache_path = cached_rom_data_path(cache_dir, rom_path);
-    let data = fs::read_to_string(cache_path).ok()?;
-    let cached = serde_json::from_str::<CachedRomData>(&data).ok()?;
-
-    if cached.full_hash == hashes.full && cached.headerless_hash == hashes.headerless {
-        Some(cached.game)
-    } else {
-        None
-    }
 }
 
 fn write_cached_rom_data(
