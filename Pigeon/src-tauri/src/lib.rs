@@ -1,3 +1,4 @@
+mod command_runner;
 mod consoles;
 mod download;
 mod emulator;
@@ -17,6 +18,7 @@ pub fn run() {
             download::download_file,
             download::load_stored_data,
             download::get_file_info,
+            command_runner::run_system_command,
             settings::get_settings,
             settings::save_settings,
             platform::get_operating_system,
