@@ -14,11 +14,9 @@ import TVDetails from "./views/Media/TVDetails";
 import MovieDetails from "./views/Media/MovieDetails";
 import { fetchSeasonInfo, fetchTitleInfo } from "./api";
 import GameDetails from "./views/RetroGames/GameDetails";
-import { invoke } from "@tauri-apps/api/core";
-import { checkForUpdates } from "./updater";
-import { Update } from "@tauri-apps/plugin-updater";
 import { MediaProvider } from "./MediaContext";
 import EpisodeDetails from "./views/Media/EpisodeDetails";
+import RomCacheGate from "./components/RomCacheGate";
 
 const router = createBrowserRouter([
   {
@@ -71,14 +69,14 @@ const router = createBrowserRouter([
 
 const root = document.getElementById("root");
 
-checkForUpdates();
-
 if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <SettingsProvider>
         <MediaProvider> 
-          <RouterProvider router={router} />
+          <RomCacheGate>
+            <RouterProvider router={router} />
+          </RomCacheGate>
         </MediaProvider>
       </SettingsProvider>
     </React.StrictMode>

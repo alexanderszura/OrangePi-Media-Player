@@ -1,6 +1,7 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { FaHouse, FaMagnifyingGlass, FaGear } from "react-icons/fa6";
 import { useSpatialNavigation } from "../spatialNavigation";
+import UpdateCard from "../components/update-card";
 import "../styles/theme.css";
 import "../styles/layout.css";
 
@@ -59,6 +60,8 @@ export default function RootLayout() {
         {/* Child routes inject their components here */}
         <Outlet />
       </main>
+
+      <UpdateCard />
     </div>
   );
 }

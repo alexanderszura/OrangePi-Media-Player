@@ -18,6 +18,7 @@ pub enum MediaFallbackStrategy {
 
 #[derive(Serialize, Deserialize)]
 pub struct Settings {
+    // pub version: String,
     pub savePath: Option<String>,
     pub preferredQuality: MediaResolution,
     pub fallbackStrategy: MediaFallbackStrategy,
@@ -68,3 +69,12 @@ pub fn save_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), St
 
     fs::write(&path, data).map_err(|e| format!("Failed to write settings: {}", e))
 }
+
+// #[tauri::command]
+// pub fn update_version(app: tauri::AppHandle, version: String) {
+//     let settings = get_settings(app);
+
+//     settings.version = version;
+
+//     save_settings(settings);
+// }

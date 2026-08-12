@@ -1,8 +1,9 @@
+mod consoles;
 mod download;
+mod emulator;
+mod platform;
 mod secrets;
 mod settings;
-mod emulator;
-mod consoles;
 use tauri_plugin_updater::Builder;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -18,6 +19,8 @@ pub fn run() {
             download::get_file_info,
             settings::get_settings,
             settings::save_settings,
+            platform::get_operating_system,
+            emulator::cache_rom_metadata,
             emulator::quick_search_roms,
             emulator::search_roms,
             emulator::game_info,

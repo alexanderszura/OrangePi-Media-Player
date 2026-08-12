@@ -1,5 +1,12 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import {
+    getOperatingSystem,
+    isLinux,
+    isWindows,
+    loadOperatingSystem,
+    type OperatingSystem
+} from "./platform";
 
 export enum MediaResolution {
     k360 = "K360",
@@ -35,6 +42,10 @@ interface Settings {
 
 interface SettingsContextType {
     settings: Settings;
+    isLoaded: boolean;
+    operatingSystem: OperatingSystem | null;
+    isLinux: boolean;
+    isWindows: boolean;
     setSavePath: (path: string) => Promise<void>;
     setPreferredQuality: (quality: MediaResolution) => Promise<void>;
     setFallbackStrategy: (strategy: MediaFallbackStrategy) => Promise<void>;
@@ -54,17 +65,27 @@ export function SettingsProvider({
         fallbackStrategy: MediaFallbackStrategy.HIGHEST,
         maxTitlesPerPage: 10,
     });
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [operatingSystem, setOperatingSystem] = useState<OperatingSystem | null>(null);
 
     useEffect(() => {
         async function load() {
-            const saved = await invoke<Settings>("get_settings");
+            try {
+                const [saved, os] = await Promise.all([
+                    invoke<Settings>("get_settings"),
+                    loadOperatingSystem(),
+                ]);
 
-            setSettings({
-                savePath: saved.savePath,
-                preferredQuality: saved.preferredQuality,
-                fallbackStrategy: saved.fallbackStrategy,
-                maxTitlesPerPage: saved.maxTitlesPerPage
-            });
+                setSettings({
+                    savePath: saved.savePath,
+                    preferredQuality: saved.preferredQuality,
+                    fallbackStrategy: saved.fallbackStrategy,
+                    maxTitlesPerPage: saved.maxTitlesPerPage
+                });
+                setOperatingSystem(os);
+            } finally {
+                setIsLoaded(true);
+            }
         }
 
         load();
@@ -107,6 +128,10 @@ export function SettingsProvider({
         <SettingsContext.Provider
             value={{
                 settings,
+                isLoaded,
+                operatingSystem: getOperatingSystem(),
+                isLinux: isLinux(),
+                isWindows: isWindows(),
                 setSavePath,
                 setPreferredQuality,
                 setFallbackStrategy,
