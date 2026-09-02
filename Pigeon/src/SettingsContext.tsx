@@ -8,35 +8,8 @@ import {
     type OperatingSystem
 } from "./platform";
 
-export enum MediaResolution {
-    k360 = "K360",
-    k480 = "K480",
-    k720 = "K720",
-    k1080 = "K1080",
-}
-
-export function resolutionToNumber(resolution: MediaResolution): number {
-    switch (resolution) {
-        case MediaResolution.k360:
-            return 360;
-        case MediaResolution.k480:
-            return 480;
-        case MediaResolution.k720:
-            return 720;
-        case MediaResolution.k1080:
-            return 1080;
-    }
-}
-
-export enum MediaFallbackStrategy {
-    LOWEST = "Lowest",
-    HIGHEST = "Highest",
-}
-
 interface Settings {
     savePath: string | null;
-    preferredQuality: MediaResolution;
-    fallbackStrategy: MediaFallbackStrategy;
     maxTitlesPerPage: number;
     enableRetroGames: boolean;
 }
@@ -48,8 +21,6 @@ interface SettingsContextType {
     isLinux: boolean;
     isWindows: boolean;
     setSavePath: (path: string) => Promise<void>;
-    setPreferredQuality: (quality: MediaResolution) => Promise<void>;
-    setFallbackStrategy: (strategy: MediaFallbackStrategy) => Promise<void>;
     setMaxTitlePerPage: (num: number) => Promise<void>;
     setEnableRetroGames: (enabled: boolean) => Promise<void>;
 }
@@ -63,8 +34,6 @@ export function SettingsProvider({
 }) {
     const [settings, setSettings] = useState<Settings>({
         savePath: null,
-        preferredQuality: MediaResolution.k1080,
-        fallbackStrategy: MediaFallbackStrategy.HIGHEST,
         maxTitlesPerPage: 10,
         enableRetroGames: false,
     });
@@ -81,8 +50,6 @@ export function SettingsProvider({
 
                 setSettings({
                     savePath: saved.savePath,
-                    preferredQuality: saved.preferredQuality,
-                    fallbackStrategy: saved.fallbackStrategy,
                     maxTitlesPerPage: saved.maxTitlesPerPage,
                     enableRetroGames: saved.enableRetroGames ?? false,
                 });
@@ -109,8 +76,6 @@ export function SettingsProvider({
         await invoke("save_settings", {
             settings: {
                 savePath: newSettings.savePath,
-                preferredQuality: newSettings.preferredQuality,
-                fallbackStrategy: newSettings.fallbackStrategy,
                 maxTitlesPerPage: newSettings.maxTitlesPerPage,
                 enableRetroGames: newSettings.enableRetroGames,
             },
@@ -119,12 +84,6 @@ export function SettingsProvider({
 
     const setSavePath = (path: string) =>
         updateSetting("savePath", path);
-
-    const setPreferredQuality = (quality: MediaResolution) =>
-        updateSetting("preferredQuality", quality);
-
-    const setFallbackStrategy = (strategy: MediaFallbackStrategy) =>
-        updateSetting("fallbackStrategy", strategy);
 
     const setMaxTitlePerPage = (num: number) =>
         updateSetting("maxTitlesPerPage", num);
@@ -141,8 +100,6 @@ export function SettingsProvider({
                 isLinux: isLinux(),
                 isWindows: isWindows(),
                 setSavePath,
-                setPreferredQuality,
-                setFallbackStrategy,
                 setMaxTitlePerPage,
                 setEnableRetroGames,
             }}

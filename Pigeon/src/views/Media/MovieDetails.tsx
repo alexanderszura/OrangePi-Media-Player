@@ -3,7 +3,7 @@ import { mediaImagePath } from "../../api";
 import { MediaDetails } from "../../responses";
 import { FaArrowLeft } from "react-icons/fa6";
 import "../../styles/detail.css";
-import { DownloadButton } from "../../components/downloadButton";
+import { PlayButton } from "../../components/playButton";
 
 export default function MovieDetails() {
     const navigate = useNavigate();
@@ -38,7 +38,7 @@ export default function MovieDetails() {
 
                 <p className="detail-overview">{titleInfo.overview}</p>
 
-                <DownloadButton type="movie" details={titleInfo}/>
+                <PlayButton type="movie" details={titleInfo}/>
             </div>
         </div>
     );

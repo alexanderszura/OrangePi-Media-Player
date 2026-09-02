@@ -14,9 +14,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            download::download_file,
-            download::load_stored_data,
-            download::get_file_info,
             settings::get_settings,
             settings::save_settings,
             platform::get_operating_system,

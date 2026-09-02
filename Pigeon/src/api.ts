@@ -22,13 +22,6 @@ import { CLIENT_ID, CLIENT_SECRET, MOVIE_DB_API_KEY } from "./secrets";
 const MEDIA_BASE_URL = "https://api.themoviedb.org/3";
 const SEARCH_ENDPOINT = "search/multi";
 
-const TOKEN_REQUEST_URL =
-  "https://vidvault.ru/api/get-token?referrer=https://vidvault.ru";
-
-const DOWNLOAD_PROXY_REQUEST_URL =
-  "https://vidvault.ru/api/download-proxy";
-
-
 // ============================================================
 // Helpers
 // ============================================================
@@ -122,92 +115,6 @@ export async function fetchSeasonInfo(
   );
 
   return toSeasonDetails(response);
-}
-
-
-// ============================================================
-// Token
-// ============================================================
-
-interface CachedToken {
-  token: string;
-  expiresAt: number;
-}
-
-let cachedToken: CachedToken | null = null;
-
-export async function refreshToken(): Promise<string> {
-  // Return the cached token if it hasn't expired.
-  // The 30-second buffer avoids using a token that's about to expire.
-  
-  if (
-    cachedToken &&
-    Date.now() < cachedToken.expiresAt - 30_000
-  ) {
-    return cachedToken.token;
-  }
-
-  const response = await fetchJson<TokenResponse>(
-    TOKEN_REQUEST_URL,
-  );
-
-  cachedToken = {
-    token: response.t,
-    expiresAt: response.e,
-  };
-
-  return cachedToken.token;
-}
-
-
-// ============================================================
-// Available Downloads
-// ============================================================
-
-interface DownloadProxyRequest {
-  tmdbId: number;
-  type: "movie" | "tv";
-  episode?: number;
-  season?: number;
-}
-
-export async function fetchAvailableDownloads(
-  id: number,
-  mediaType: "movie" | "tv",
-  season?: number | string,
-  episode?: number | string,
-): Promise<AvailableDownloads | null> {
-  const token = await refreshToken();
-
-  const body: DownloadProxyRequest = {
-    tmdbId: id,
-    type: mediaType,
-  };
-
-  if (episode !== undefined) {
-    body.episode = Number(episode);
-  }
-
-  if (season !== undefined) {
-    body.season = Number(season);
-  }
-
-  const response =
-    await fetchJson<AvailableDownloadsResponse>(
-      DOWNLOAD_PROXY_REQUEST_URL,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-          "x-request-token": token,
-        },
-
-        body: JSON.stringify(body),
-      },
-    );
-
-  return toAvailableDownloads(response);
 }
 
 export function gameImagePath(imageId: string | undefined, type: GameImageType, nullValue="noImage.jpg") {

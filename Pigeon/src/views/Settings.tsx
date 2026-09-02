@@ -1,11 +1,10 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { MediaFallbackStrategy, MediaResolution, useSettings } from "../SettingsContext";
+import { useSettings } from "../SettingsContext";
 import { FaFolder } from "react-icons/fa6";
 import "../styles/settings.css";
-import TVDropdown from "../components/dropdown";
 
 export default function Settings() {
-    const { settings, setSavePath, setPreferredQuality, setFallbackStrategy, setMaxTitlePerPage, setEnableRetroGames } = useSettings();
+    const { settings, setSavePath, setMaxTitlePerPage, setEnableRetroGames } = useSettings();
 
     return (
         <div className="page settings-view">
@@ -33,40 +32,6 @@ export default function Settings() {
                     </button>
                     <span>{settings.savePath}</span>
                 </div>
-            </div>
-
-            <div className="settings-row">
-                <h2>Preferred Resolution</h2>
-                <TVDropdown
-                    className="select-dropdown"
-                    value={settings.preferredQuality}
-                    onChange={async (value) => await setPreferredQuality(value)}
-                    options={
-                        Object.values(MediaResolution).map(resolution => ({
-                            label: `${resolution.replace("K", "")}p`,
-                            value: resolution
-                        })) ?? []
-                    }
-                />
-            </div>
-
-            <div className="settings-row">
-                <h2>Fallback Strategy Resolution</h2>
-                <TVDropdown
-                    className="select-dropdown"
-                    value={settings.fallbackStrategy}
-                    onChange={async (value) => await setFallbackStrategy(value)}
-                    options={[
-                        {
-                            label: "Lowest",
-                            value: MediaFallbackStrategy.LOWEST
-                        },
-                        {
-                            label: "Highest",
-                            value: MediaFallbackStrategy.HIGHEST
-                        }
-                    ]}
-                />
             </div>
 
             <div className="settings-row"> 

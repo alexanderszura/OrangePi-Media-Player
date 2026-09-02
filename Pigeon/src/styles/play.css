@@ -1,13 +1,14 @@
 /* ==========================================================
-   Play — full-bleed video player
-   Netflix-style chrome dressed in Pigeon's own theme: amber
-   for the back button/transport controls, hot pink reserved
-   for the one true "play" action, per theme.css's convention.
+   Play — full-bleed embedded video player
+   The actual player now lives inside an iframe served by the
+   home media server, so this file only styles the app-level
+   chrome layered on top of it: the back button + title
+   overlay. Netflix-style scrim, amber for the back button,
+   per theme.css's convention.
 
    `.player` escapes the normal app-shell layout entirely
    (fixed, viewport-filling) so the nav bar and the scrollable
-   `.app-main` never enter the picture — nothing here can
-   scroll, and the video is the only thing on screen.
+   `.app-main` never enter the picture.
    ========================================================== */
 
 .player {
@@ -23,17 +24,17 @@
   cursor: none;
 }
 
-.player video {
+.player__frame {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  border: none;
   background: #000;
 }
 
 /* ---------------------------------------------------------
-   Scrims — soft black gradients so white text/controls stay
+   Scrim — soft black gradient so the title/back button stay
    legible over whatever is playing underneath.
    --------------------------------------------------------- */
 
@@ -43,6 +44,7 @@
   right: 0;
   pointer-events: none;
   transition: opacity 0.35s ease;
+  z-index: 5;
 }
 
 .player__scrim--top {
@@ -51,24 +53,18 @@
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent);
 }
 
-.player__scrim--bottom {
-  bottom: 0;
-  height: 320px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
-}
-
 .player--controls-hidden .player__scrim {
   opacity: 0;
 }
 
 /* ---------------------------------------------------------
-   Buffering spinner
+   Loading spinner — shown until the iframe fires onLoad
    --------------------------------------------------------- */
 
 .player__buffering {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 6;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -82,52 +78,6 @@
   font-family: var(--font-display);
   font-size: 1rem;
   color: var(--text-muted);
-}
-
-/* ---------------------------------------------------------
-   Center flash — the big play/pause "ping" that appears for
-   a moment whenever playback toggles.
-   --------------------------------------------------------- */
-
-.player__center-flash {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: rgba(10, 10, 13, 0.55);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  color: var(--text);
-  font-size: 2rem;
-  pointer-events: none;
-  transform: translate(-50%, -50%) scale(0.7);
-  opacity: 0;
-  /* animation: player-flash-pop 0.55s ease both; */
-}
-
-@keyframes player-flash-pop {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.7);
-  }
-  25% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  75% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(1.05);
-  }
 }
 
 /* ---------------------------------------------------------
@@ -181,200 +131,6 @@
   transform: translateY(-1px) scale(1.06);
 }
 
-.player__title-block {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.player__eyebrow {
-  font-family: var(--font-display);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--accent-soft);
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
-}
-
-.player__title {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
-}
-
-/* ---------------------------------------------------------
-   Bottom bar — scrubber, timecode, transport controls
-   --------------------------------------------------------- */
-
-.player__bottom-bar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 0 56px 40px;
-  transition: opacity 0.35s ease, visibility 0s linear 0s;
-}
-
-.player--controls-hidden .player__bottom-bar {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.35s ease, visibility 0s linear 0.35s;
-}
-
-/* Scrubber — generous hit area, slim visual track */
-
-.player__scrubber {
-  position: relative;
-  display: flex;
-  align-items: center;
-  height: 24px;
-  padding: 10px 0;
-  cursor: pointer;
-}
-
-.player__scrubber-track {
-  position: relative;
-  width: 100%;
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.22);
-  transition: height 0.15s ease;
-}
-
-.player__scrubber:hover .player__scrubber-track,
-.player__scrubber:focus-visible .player__scrubber-track {
-  height: 6px;
-}
-
-.player__scrubber-buffered {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.32);
-}
-
-.player__scrubber-fill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  border-radius: var(--radius-pill);
-  background: var(--play);
-}
-
-.player__scrubber-thumb {
-  position: absolute;
-  top: 50%;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: var(--play);
-  box-shadow: 0 0 0 3px rgba(255, 62, 120, 0.25);
-  transform: translate(-50%, -50%) scale(0);
-  transition: transform 0.15s ease;
-}
-
-.player__scrubber:hover .player__scrubber-thumb,
-.player__scrubber:focus-visible .player__scrubber-thumb {
-  transform: translate(-50%, -50%) scale(1);
-}
-
-.player__scrubber:focus-visible {
-  outline: none;
-}
-
-.player__scrubber:focus-visible .player__scrubber-track {
-  box-shadow: var(--shadow-glow-play);
-}
-
-.player__time-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-display);
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.player__time-sep {
-  color: var(--text-faint);
-}
-
-/* Transport controls */
-
-.player__controls-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-top: 2px;
-}
-
-.player__control-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border-strong);
-  background: rgba(23, 23, 28, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: var(--text);
-  font-size: 1.15rem;
-}
-
-.player__control-button:hover {
-  background: var(--surface-hover);
-  transform: translateY(-1px);
-}
-
-.player__control-button:focus-visible {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-glow-accent);
-  transform: translateY(-1px) scale(1.06);
-}
-
-.player__control-button:active {
-  transform: translateY(0);
-}
-
-.player__control-button--primary {
-  width: 60px;
-  height: 60px;
-  font-size: 1.4rem;
-  border-color: rgba(255, 62, 120, 0.45);
-  background: linear-gradient(135deg, rgba(255, 62, 120, 0.28), rgba(255, 62, 120, 0.1));
-  color: var(--text);
-}
-
-.player__control-button--primary:hover {
-  background: linear-gradient(135deg, rgba(255, 62, 120, 0.36), rgba(255, 62, 120, 0.14));
-}
-
-.player__control-button--primary:focus-visible {
-  border-color: var(--play);
-  box-shadow: var(--shadow-glow-play);
-}
-
-.player__control-button--mute {
-  margin-left: 12px;
-}
-
 /* ---------------------------------------------------------
    Small windows / narrow aspect ratios
    --------------------------------------------------------- */
@@ -382,25 +138,5 @@
 @media (max-width: 720px) {
   .player__top-bar {
     padding: 24px 24px 0;
-  }
-
-  .player__bottom-bar {
-    padding: 0 24px 28px;
-  }
-
-  .player__title {
-    font-size: 1.25rem;
-  }
-
-  .player__control-button {
-    width: 42px;
-    height: 42px;
-    font-size: 1rem;
-  }
-
-  .player__control-button--primary {
-    width: 52px;
-    height: 52px;
-    font-size: 1.2rem;
   }
 }

@@ -3,8 +3,8 @@ import { fetchTitleInfo, mediaImagePath } from "../../api";
 import { MediaDetails, SeasonDetails, SeasonEpisode, toSeasonDetails } from "../../responses";
 import { FaArrowLeft } from "react-icons/fa6";
 import "../../styles/detail.css";
-import { DownloadButton } from "../../components/downloadButton";
 import { useEffect, useState } from "react";
+import { PlayButton } from "../../components/playButton";
 
 export default function EpisodeDetails() {
     const navigate = useNavigate();
@@ -57,7 +57,7 @@ export default function EpisodeDetails() {
 
                 <p className="detail-overview">{episodeInfo.overview}</p>
 
-                { details && <DownloadButton type="tv" details={ details }/> }
+                { details && <PlayButton type="tv" details={ details }/> }
             </div>
         </div>
     );
