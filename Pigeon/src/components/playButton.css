@@ -1,0 +1,34 @@
+.play-button-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 62, 120, 0.4);
+  background: rgba(255, 62, 120, 0.1);
+  color: var(--play-soft);
+  font-size: 1.15rem;
+  line-height: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.play-button-icon svg {
+  display: block;
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: currentColor;
+}
+
+.play-button-icon:hover,
+.play-button-icon:focus-visible {
+  background: rgba(255, 62, 120, 0.22);
+  box-shadow: var(--shadow-glow-play);
+  transform: scale(1.06);
+}

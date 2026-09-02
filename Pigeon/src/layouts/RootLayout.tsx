@@ -1,11 +1,45 @@
-import { Outlet, NavLink } from "react-router-dom";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { FaHouse, FaMagnifyingGlass, FaGear } from "react-icons/fa6";
 import { useSpatialNavigation } from "../spatialNavigation";
+import UpdateCard from "../components/update-card";
+import WelcomeScreen from "../components/WelcomeScreen";
+import RomCacheGate from "../components/RomCacheGate";
+import { useSettings } from "../SettingsContext";
+import { useEffect, useRef, useState } from "react";
 import "../styles/theme.css";
 import "../styles/layout.css";
 
 export default function RootLayout() {
   useSpatialNavigation();
+  const navigate = useNavigate();
+  const { settings, isLoaded } = useSettings();
+  const [isFirstRun, setIsFirstRun] = useState(false);
+  const checkedFirstRun = useRef(false);
+
+  useEffect(() => {
+    if (!isLoaded || checkedFirstRun.current) {
+      return;
+    }
+
+    checkedFirstRun.current = true;
+    setIsFirstRun(!settings.savePath?.trim());
+  }, [isLoaded, settings.savePath]);
+
+  if (isLoaded && isFirstRun) {
+    return (
+      <div className="app-shell">
+        <main className="app-main">
+          <WelcomeScreen
+            onContinue={() => setIsFirstRun(false)}
+            onEditSettings={() => {
+              setIsFirstRun(false);
+              navigate("/settings");
+            }}
+          />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">
@@ -39,6 +73,12 @@ export default function RootLayout() {
             className={({ isActive }) =>
               `app-nav__link${isActive ? " active" : ""}`
             }
+            aria-disabled={!settings.enableRetroGames}
+            onClick={(event) => {
+              if (!settings.enableRetroGames) {
+                event.preventDefault();
+              }
+            }}
           >
             <FaMagnifyingGlass />
             Retro Games
@@ -57,8 +97,12 @@ export default function RootLayout() {
 
       <main className="app-main">
         {/* Child routes inject their components here */}
-        <Outlet />
+        <RomCacheGate>
+          <Outlet />
+        </RomCacheGate>
       </main>
+
+      <UpdateCard />
     </div>
   );
 }

@@ -18,10 +18,13 @@ pub enum MediaFallbackStrategy {
 
 #[derive(Serialize, Deserialize)]
 pub struct Settings {
+    // pub version: String,
     pub savePath: Option<String>,
     pub preferredQuality: MediaResolution,
     pub fallbackStrategy: MediaFallbackStrategy,
     pub maxTitlesPerPage: u8,
+    #[serde(default)]
+    pub enableRetroGames: bool,
 }
 
 impl Default for Settings {
@@ -31,6 +34,7 @@ impl Default for Settings {
             preferredQuality: MediaResolution::K1080,
             fallbackStrategy: MediaFallbackStrategy::Highest,
             maxTitlesPerPage: 10,
+            enableRetroGames: false,
         }
     }
 }
@@ -68,3 +72,12 @@ pub fn save_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), St
 
     fs::write(&path, data).map_err(|e| format!("Failed to write settings: {}", e))
 }
+
+// #[tauri::command]
+// pub fn update_version(app: tauri::AppHandle, version: String) {
+//     let settings = get_settings(app);
+
+//     settings.version = version;
+
+//     save_settings(settings);
+// }

@@ -9,9 +9,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
+use tauri::{AppHandle, Emitter};
 
 const HASHEOUS_LOOKUP_URL: &str = "https://hasheous.org/api/v1/Lookup/ByHash/";
 const ROM_CACHE_DIR_NAME: &str = "cached data";
+const API_REQUEST_INTERVAL: Duration = Duration::from_millis(250);
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Cover {
@@ -43,12 +45,6 @@ struct CachedRomData {
     source_path: String,
     full_hash: String,
     headerless_hash: Option<String>,
-    game: GameData,
-}
-
-#[derive(Debug, Clone)]
-struct RomMatch {
-    path: PathBuf,
     game: GameData,
 }
 
@@ -94,6 +90,196 @@ struct CachedToken {
 static TOKEN_CACHE: Mutex<Option<CachedToken>> = Mutex::new(None);
 static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 static HASHEOUS_CACHE: OnceLock<Mutex<HashMap<String, Option<u32>>>> = OnceLock::new();
+static LAST_API_REQUEST: Mutex<Option<Instant>> = Mutex::new(None);
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RomCacheProgress {
+    total: usize,
+    completed: usize,
+    current: Option<String>,
+    status: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RomCacheSummary {
+    total: usize,
+    cached: usize,
+    skipped: usize,
+    failed: usize,
+}
+
+#[tauri::command]
+pub async fn cache_rom_metadata(
+    app: AppHandle,
+    save_path: String,
+) -> Result<RomCacheSummary, String> {
+    let roms_dir = PathBuf::from(&save_path).join("roms");
+    fs::create_dir_all(&roms_dir).map_err(|e| {
+        format!(
+            "Failed to create roms directory {}: {}",
+            roms_dir.display(),
+            e
+        )
+    })?;
+
+    let cache_dir = ensure_rom_cache_dir(&roms_dir)?;
+    let roms = collect_rom_files(&roms_dir)?;
+    let total = roms.len();
+    let mut completed = roms
+        .iter()
+        .filter(|path| cached_rom_data_path(&cache_dir, path).exists())
+        .count();
+    let mut cached = 0;
+    let mut failed = 0;
+
+    emit_rom_cache_progress(
+        &app,
+        RomCacheProgress {
+            total,
+            completed,
+            current: None,
+            status: if total == 0 {
+                "No ROM hacks found".to_string()
+            } else {
+                "Checking ROM metadata cache".to_string()
+            },
+        },
+    );
+
+    for rom_path in roms {
+        let cache_path = cached_rom_data_path(&cache_dir, &rom_path);
+        if cache_path.exists() {
+            continue;
+        }
+
+        let display_name = rom_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Unknown ROM")
+            .to_string();
+
+        emit_rom_cache_progress(
+            &app,
+            RomCacheProgress {
+                total,
+                completed,
+                current: Some(display_name.clone()),
+                status: "Hashing ROM".to_string(),
+            },
+        );
+
+        let path_for_hash = rom_path.clone();
+        let hashes = match tokio::task::spawn_blocking(move || hash_file(&path_for_hash)).await {
+            Ok(Ok(hashes)) => hashes,
+            Ok(Err(e)) => {
+                eprintln!("Failed to hash {}: {}", rom_path.display(), e);
+                failed += 1;
+                completed += 1;
+                emit_rom_cache_progress(
+                    &app,
+                    RomCacheProgress {
+                        total,
+                        completed,
+                        current: Some(display_name),
+                        status: "Skipped after hash error".to_string(),
+                    },
+                );
+                continue;
+            }
+            Err(e) => {
+                eprintln!("Hashing task panicked for {}: {}", rom_path.display(), e);
+                failed += 1;
+                completed += 1;
+                emit_rom_cache_progress(
+                    &app,
+                    RomCacheProgress {
+                        total,
+                        completed,
+                        current: Some(display_name),
+                        status: "Skipped after hash error".to_string(),
+                    },
+                );
+                continue;
+            }
+        };
+
+        emit_rom_cache_progress(
+            &app,
+            RomCacheProgress {
+                total,
+                completed,
+                current: Some(display_name.clone()),
+                status: "Looking up ROM hash".to_string(),
+            },
+        );
+
+        let game = match find_igdb_id_from_hash(&hashes).await {
+            Ok(Some(id)) => {
+                emit_rom_cache_progress(
+                    &app,
+                    RomCacheProgress {
+                        total,
+                        completed,
+                        current: Some(display_name.clone()),
+                        status: "Fetching game metadata".to_string(),
+                    },
+                );
+
+                match query_igdb(vec![id]).await {
+                    Ok(mut games) => games
+                        .pop()
+                        .unwrap_or_else(|| blank_game_data_from_path(&rom_path)),
+                    Err(e) => {
+                        eprintln!(
+                            "IGDB metadata lookup failed for {}: {}",
+                            rom_path.display(),
+                            e
+                        );
+                        blank_game_data_from_path(&rom_path)
+                    }
+                }
+            }
+            Ok(None) => blank_game_data_from_path(&rom_path),
+            Err(e) => {
+                eprintln!("Hasheous lookup failed for {}: {}", rom_path.display(), e);
+                blank_game_data_from_path(&rom_path)
+            }
+        };
+
+        write_cached_rom_data(&cache_dir, &rom_path, Some(&hashes), &game);
+        cached += 1;
+        completed += 1;
+
+        emit_rom_cache_progress(
+            &app,
+            RomCacheProgress {
+                total,
+                completed,
+                current: Some(display_name),
+                status: "Cached ROM metadata".to_string(),
+            },
+        );
+    }
+
+    emit_rom_cache_progress(
+        &app,
+        RomCacheProgress {
+            total,
+            completed: total,
+            current: None,
+            status: "ROM metadata cache ready".to_string(),
+        },
+    );
+
+    Ok(RomCacheSummary {
+        total,
+        cached,
+        skipped: total.saturating_sub(cached + failed),
+        failed,
+    })
+}
 
 #[tauri::command]
 pub async fn search_roms(
@@ -107,178 +293,32 @@ pub async fn search_roms(
     }
 
     let roms_dir = PathBuf::from(&save_path).join("roms");
-    fs::create_dir_all(&roms_dir).map_err(|e| {
-        format!(
-            "Failed to create roms directory {}: {}",
-            roms_dir.display(),
-            e
-        )
-    })?;
-    let cache_dir = ensure_rom_cache_dir(&roms_dir)?;
+    let cache_dir = roms_dir.join(ROM_CACHE_DIR_NAME);
 
-    // 1. Find files on disk whose name matches the search term.
-    let mut matches: Vec<RomMatch> = Vec::new();
-    find_matching_rom_files(&roms_dir, &search_term, limit as usize, &mut matches)?;
-
-    if matches.is_empty() {
+    if !cache_dir.exists() {
         return Ok(Vec::new());
     }
 
-    // 2. Hash each matched file and resolve it to an IGDB id via Hasheous.
-    let mut igdb_ids: Vec<u32> = Vec::new();
-    let mut resolved_ids_by_match: Vec<Option<u32>> = vec![None; matches.len()];
-    let mut cached_games_by_match: Vec<Option<GameData>> = vec![None; matches.len()];
-    let mut hashes_by_match: Vec<Option<FileHashes>> = vec![None; matches.len()];
+    let mut game_entries = read_matching_cached_rom_entries(&cache_dir, &search_term)?;
+    let mut games = dedupe_game_entries(game_entries.drain(..).collect());
+    games.truncate(limit as usize);
 
-    for (index, rom_match) in matches.iter().enumerate() {
-        let path_for_hash = rom_match.path.clone();
-        let hashes = match tokio::task::spawn_blocking(move || hash_file(&path_for_hash)).await {
-            Ok(Ok(h)) => h,
-            Ok(Err(e)) => {
-                eprintln!("Failed to hash {}: {}", rom_match.path.display(), e);
-                continue;
-            }
-            Err(e) => {
-                eprintln!(
-                    "Hashing task panicked for {}: {}",
-                    rom_match.path.display(),
-                    e
-                );
-                continue;
-            }
-        };
-
-        hashes_by_match[index] = Some(hashes.clone());
-
-        if let Some(cached_game) = read_cached_rom_data(&cache_dir, &rom_match.path, &hashes) {
-            cached_games_by_match[index] = Some(cached_game);
-            continue;
-        }
-
-        match find_igdb_id_from_hash(&hashes).await {
-            Ok(Some(id)) => {
-                resolved_ids_by_match[index] = Some(id);
-                if !igdb_ids.contains(&id) {
-                    igdb_ids.push(id);
-                }
-            }
-            Ok(None) => {
-                // eprintln!("No IGDB match found for {}", rom_match.path.display());
-            }
-            Err(e) => {
-                eprintln!(
-                    "Hasheous lookup failed for {}: {}",
-                    rom_match.path.display(),
-                    e
-                );
-            }
-        }
-    }
-
-    if igdb_ids.is_empty() {
-        let game_entries = matches
-            .into_iter()
-            .enumerate()
-            .map(|(index, rom_match)| {
-                let game = cached_games_by_match[index].clone().unwrap_or_else(|| {
-                    write_cached_rom_data(
-                        &cache_dir,
-                        &rom_match.path,
-                        hashes_by_match[index].as_ref(),
-                        &rom_match.game,
-                    );
-                    rom_match.game
-                });
-
-                (game, hashes_by_match[index].clone())
-            })
-            .collect();
-
-        return Ok(dedupe_game_entries(game_entries));
-    }
-
-    // 3. Fetch metadata for every matched id in a single IGDB call.
-    let games_by_id: HashMap<u32, GameData> = query_igdb(igdb_ids)
-        .await?
-        .into_iter()
-        .map(|game| (game.id as u32, game))
-        .collect();
-
-    let game_entries = matches
-        .into_iter()
-        .enumerate()
-        .map(|(index, rom_match)| {
-            if let Some(cached_game) = &cached_games_by_match[index] {
-                return (cached_game.clone(), hashes_by_match[index].clone());
-            }
-
-            let game = resolved_ids_by_match[index]
-                .and_then(|id| games_by_id.get(&id).cloned())
-                .unwrap_or_else(|| rom_match.game.clone());
-
-            write_cached_rom_data(
-                &cache_dir,
-                &rom_match.path,
-                hashes_by_match[index].as_ref(),
-                &game,
-            );
-
-            (game, hashes_by_match[index].clone())
-        })
-        .collect::<Vec<_>>();
-
-    Ok(dedupe_game_entries(game_entries))
-}
-
-#[tauri::command]
-pub fn quick_search_roms(
-    name: String,
-    limit: u32,
-    save_path: String,
-) -> Result<Vec<GameData>, String> {
-    let search_term = name.trim().to_lowercase();
-    if search_term.is_empty() || limit == 0 {
-        return Ok(Vec::new());
-    }
-
-    let roms_dir = PathBuf::from(&save_path).join("roms");
-    fs::create_dir_all(&roms_dir).map_err(|e| {
-        format!(
-            "Failed to create roms directory {}: {}",
-            roms_dir.display(),
-            e
-        )
-    })?;
-    ensure_rom_cache_dir(&roms_dir)?;
-
-    let mut matches: Vec<RomMatch> = Vec::new();
-    find_matching_rom_files(&roms_dir, &search_term, limit as usize, &mut matches)?;
-
-    Ok(matches
-        .into_iter()
-        .map(|rom_match| rom_match.game)
-        .collect())
+    Ok(games)
 }
 
 /// Fallback lookup used only when the frontend navigates to a game's detail
 /// page without already having the `GameData` in hand (e.g. a direct link
 /// or a page refresh). Always checks the on-disk ROM cache first, since
 /// that data was already fetched/hashed during a prior `search_roms` call.
-/// Only reaches out to IGDB if nothing cached matches this id.
+/// Returns an empty fallback if nothing cached matches this id. Network
+/// metadata calls happen only during cache_rom_metadata.
 #[tauri::command]
-pub async fn game_info(id: u64, save_path: String) -> Result<GameData, String> {
+pub fn game_info(id: u64, save_path: String) -> Result<GameData, String> {
     let roms_dir = PathBuf::from(&save_path).join("roms");
     let cache_dir = roms_dir.join(ROM_CACHE_DIR_NAME);
 
     if let Some(game) = find_cached_game_by_id(&cache_dir, id) {
         return Ok(game);
-    }
-
-    if id <= u32::MAX as u64 && !is_local_game_id(id) {
-        let mut games = query_igdb(vec![id as u32]).await?;
-        if let Some(game) = games.pop() {
-            return Ok(game);
-        }
     }
 
     Ok(blank_game_data("", None))
@@ -313,18 +353,62 @@ fn find_cached_game_by_id(cache_dir: &Path, id: u64) -> Option<GameData> {
     None
 }
 
-/// Recursively walk `dir`, collecting files whose stem contains `needle`
-/// (already lower-cased), stopping once `limit` matches are found.
-fn find_matching_rom_files(
-    dir: &Path,
-    needle: &str,
-    limit: usize,
-    out: &mut Vec<RomMatch>,
-) -> Result<(), String> {
-    if out.len() >= limit {
-        return Ok(());
+fn read_matching_cached_rom_entries(
+    cache_dir: &Path,
+    search_term: &str,
+) -> Result<Vec<(GameData, Option<FileHashes>)>, String> {
+    let entries = fs::read_dir(cache_dir)
+        .map_err(|e| format!("Failed to read ROM cache {}: {}", cache_dir.display(), e))?;
+    let mut matches = Vec::new();
+
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Failed to read ROM cache entry: {}", e))?;
+        let path = entry.path();
+
+        if path.extension().and_then(|s| s.to_str()) != Some("json") {
+            continue;
+        }
+
+        let data = fs::read_to_string(&path)
+            .map_err(|e| format!("Failed to read ROM cache {}: {}", path.display(), e))?;
+        let cached = serde_json::from_str::<CachedRomData>(&data)
+            .map_err(|e| format!("Failed to parse ROM cache {}: {}", path.display(), e))?;
+
+        let source_name = Path::new(&cached.source_path)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default()
+            .to_lowercase();
+        let game_name = cached.game.name.to_lowercase();
+
+        if game_name.contains(search_term) || source_name.contains(search_term) {
+            matches.push((
+                cached.game,
+                Some(FileHashes {
+                    full: cached.full_hash,
+                    headerless: cached.headerless_hash,
+                }),
+            ));
+        }
     }
 
+    Ok(matches)
+}
+
+/// Recursively walk `dir`, collecting files whose stem contains `needle`
+/// (already lower-cased), stopping once `limit` matches are found.
+fn collect_rom_files(dir: &Path) -> Result<Vec<PathBuf>, String> {
+    let mut roms = Vec::new();
+    collect_rom_files_in_dir(dir, &mut roms)?;
+    roms.sort_by(|a, b| {
+        a.to_string_lossy()
+            .to_lowercase()
+            .cmp(&b.to_string_lossy().to_lowercase())
+    });
+    Ok(roms)
+}
+
+fn collect_rom_files_in_dir(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
     let entries = fs::read_dir(dir)
         .map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
 
@@ -342,28 +426,28 @@ fn find_matching_rom_files(
                 continue;
             }
 
-            find_matching_rom_files(&path, needle, limit, out)?;
-        } else if path.is_file() {
-            let file_stem = path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or_default()
-                .to_lowercase();
-
-            if file_stem.contains(needle) {
-                out.push(RomMatch {
-                    game: blank_game_data_from_path(&path),
-                    path,
-                });
-            }
-        }
-
-        if out.len() >= limit {
-            break;
+            collect_rom_files_in_dir(&path, out)?;
+        } else if path.is_file() && is_supported_rom_file(&path) {
+            out.push(path);
         }
     }
 
     Ok(())
+}
+
+fn is_supported_rom_file(path: &Path) -> bool {
+    let extension = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
+
+    CONSOLES
+        .iter()
+        .any(|console| console.supports_extension(extension))
+}
+
+fn emit_rom_cache_progress(app: &AppHandle, progress: RomCacheProgress) {
+    let _ = app.emit("rom-cache-progress", progress);
 }
 
 fn dedupe_game_entries(game_entries: Vec<(GameData, Option<FileHashes>)>) -> Vec<GameData> {
@@ -432,22 +516,6 @@ fn ensure_rom_cache_dir(roms_dir: &Path) -> Result<PathBuf, String> {
         )
     })?;
     Ok(cache_dir)
-}
-
-fn read_cached_rom_data(
-    cache_dir: &Path,
-    rom_path: &Path,
-    hashes: &FileHashes,
-) -> Option<GameData> {
-    let cache_path = cached_rom_data_path(cache_dir, rom_path);
-    let data = fs::read_to_string(cache_path).ok()?;
-    let cached = serde_json::from_str::<CachedRomData>(&data).ok()?;
-
-    if cached.full_hash == hashes.full && cached.headerless_hash == hashes.headerless {
-        Some(cached.game)
-    } else {
-        None
-    }
 }
 
 fn write_cached_rom_data(
@@ -588,6 +656,8 @@ async fn query_hasheous(sha1_hash: &str) -> Result<Option<u32>, String> {
         }
     }
 
+    throttle_api_request().await;
+
     let response = get_client()
         .post(HASHEOUS_LOOKUP_URL)
         .json(&json!({ "sha1": sha1_hash }))
@@ -647,6 +717,8 @@ async fn get_igdb_token() -> Result<String, String> {
     }
 
     // Request new token using secrets module constants
+    throttle_api_request().await;
+
     let response = get_client()
         .post("https://id.twitch.tv/oauth2/token")
         .header("Content-Type", "application/x-www-form-urlencoded")
@@ -703,6 +775,8 @@ pub async fn query_igdb(ids: Vec<u32>) -> Result<Vec<GameData>, String> {
         ids.len()
     );
 
+    throttle_api_request().await;
+
     let response = get_client()
         .post("https://api.igdb.com/v4/games")
         .header("Client-ID", CLIENT_ID)
@@ -757,6 +831,32 @@ pub async fn query_igdb(ids: Vec<u32>) -> Result<Vec<GameData>, String> {
         .collect();
 
     Ok(games)
+}
+
+async fn throttle_api_request() {
+    let wait = {
+        let Ok(mut last_request) = LAST_API_REQUEST.lock() else {
+            return;
+        };
+
+        let now = Instant::now();
+        let scheduled_at = match *last_request {
+            Some(last) => last + API_REQUEST_INTERVAL,
+            None => now,
+        };
+        let request_at = if scheduled_at > now {
+            scheduled_at
+        } else {
+            now
+        };
+
+        *last_request = Some(request_at);
+        request_at.saturating_duration_since(now)
+    };
+
+    if !wait.is_zero() {
+        tokio::time::sleep(wait).await;
+    }
 }
 
 fn igdb_popularity_score(game: &IgdbGame) -> Option<f64> {

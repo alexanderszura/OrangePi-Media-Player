@@ -1,11 +1,10 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { MediaFallbackStrategy, MediaResolution, useSettings } from "../SettingsContext";
+import { useSettings } from "../SettingsContext";
 import { FaFolder } from "react-icons/fa6";
 import "../styles/settings.css";
-import TVDropdown from "../components/dropdown";
 
 export default function Settings() {
-    const { settings, setSavePath, setPreferredQuality, setFallbackStrategy, setMaxTitlePerPage } = useSettings();
+    const { settings, setSavePath, setMaxTitlePerPage, setEnableRetroGames } = useSettings();
 
     return (
         <div className="page settings-view">
@@ -35,40 +34,6 @@ export default function Settings() {
                 </div>
             </div>
 
-            <div className="settings-row">
-                <h2>Preferred Resolution</h2>
-                <TVDropdown
-                    className="select-dropdown"
-                    value={settings.preferredQuality}
-                    onChange={async (value) => await setPreferredQuality(value)}
-                    options={
-                        Object.values(MediaResolution).map(resolution => ({
-                            label: `${resolution.replace("K", "")}p`,
-                            value: resolution
-                        })) ?? []
-                    }
-                />
-            </div>
-
-            <div className="settings-row">
-                <h2>Fallback Strategy Resolution</h2>
-                <TVDropdown
-                    className="select-dropdown"
-                    value={settings.fallbackStrategy}
-                    onChange={async (value) => await setFallbackStrategy(value)}
-                    options={[
-                        {
-                            label: "Lowest",
-                            value: MediaFallbackStrategy.LOWEST
-                        },
-                        {
-                            label: "Highest",
-                            value: MediaFallbackStrategy.HIGHEST
-                        }
-                    ]}
-                />
-            </div>
-
             <div className="settings-row"> 
                 <h2> Max Titles Per Search Page </h2>
                 <input
@@ -82,6 +47,21 @@ export default function Settings() {
                     autoComplete="off"
                     onChange={async (e) => setMaxTitlePerPage(e.target.valueAsNumber)}
                 />
+            </div>
+
+            <div className="settings-row">
+                <h2>Retro Games</h2>
+                <label className="settings-toggle">
+                    <input
+                        type="checkbox"
+                        checked={settings.enableRetroGames}
+                        onChange={async (event) => await setEnableRetroGames(event.currentTarget.checked)}
+                    />
+                    <span className="settings-toggle__track" aria-hidden="true">
+                        <span className="settings-toggle__thumb" />
+                    </span>
+                    <strong>Enable Retro Games</strong>
+                </label>
             </div>
         </div>
     );

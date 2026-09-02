@@ -1,44 +1,28 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-
-export enum MediaResolution {
-    k360 = "K360",
-    k480 = "K480",
-    k720 = "K720",
-    k1080 = "K1080",
-}
-
-export function resolutionToNumber(resolution: MediaResolution): number {
-    switch (resolution) {
-        case MediaResolution.k360:
-            return 360;
-        case MediaResolution.k480:
-            return 480;
-        case MediaResolution.k720:
-            return 720;
-        case MediaResolution.k1080:
-            return 1080;
-    }
-}
-
-export enum MediaFallbackStrategy {
-    LOWEST = "Lowest",
-    HIGHEST = "Highest",
-}
+import {
+    getOperatingSystem,
+    isLinux,
+    isWindows,
+    loadOperatingSystem,
+    type OperatingSystem
+} from "./platform";
 
 interface Settings {
     savePath: string | null;
-    preferredQuality: MediaResolution;
-    fallbackStrategy: MediaFallbackStrategy;
     maxTitlesPerPage: number;
+    enableRetroGames: boolean;
 }
 
 interface SettingsContextType {
     settings: Settings;
+    isLoaded: boolean;
+    operatingSystem: OperatingSystem | null;
+    isLinux: boolean;
+    isWindows: boolean;
     setSavePath: (path: string) => Promise<void>;
-    setPreferredQuality: (quality: MediaResolution) => Promise<void>;
-    setFallbackStrategy: (strategy: MediaFallbackStrategy) => Promise<void>;
     setMaxTitlePerPage: (num: number) => Promise<void>;
+    setEnableRetroGames: (enabled: boolean) => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsContextType | null>(null);
@@ -50,21 +34,29 @@ export function SettingsProvider({
 }) {
     const [settings, setSettings] = useState<Settings>({
         savePath: null,
-        preferredQuality: MediaResolution.k1080,
-        fallbackStrategy: MediaFallbackStrategy.HIGHEST,
         maxTitlesPerPage: 10,
+        enableRetroGames: false,
     });
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [operatingSystem, setOperatingSystem] = useState<OperatingSystem | null>(null);
 
     useEffect(() => {
         async function load() {
-            const saved = await invoke<Settings>("get_settings");
+            try {
+                const [saved, os] = await Promise.all([
+                    invoke<Settings>("get_settings"),
+                    loadOperatingSystem(),
+                ]);
 
-            setSettings({
-                savePath: saved.savePath,
-                preferredQuality: saved.preferredQuality,
-                fallbackStrategy: saved.fallbackStrategy,
-                maxTitlesPerPage: saved.maxTitlesPerPage
-            });
+                setSettings({
+                    savePath: saved.savePath,
+                    maxTitlesPerPage: saved.maxTitlesPerPage,
+                    enableRetroGames: saved.enableRetroGames ?? false,
+                });
+                setOperatingSystem(os);
+            } finally {
+                setIsLoaded(true);
+            }
         }
 
         load();
@@ -84,9 +76,8 @@ export function SettingsProvider({
         await invoke("save_settings", {
             settings: {
                 savePath: newSettings.savePath,
-                preferredQuality: newSettings.preferredQuality,
-                fallbackStrategy: newSettings.fallbackStrategy,
-                maxTitlesPerPage: newSettings.maxTitlesPerPage
+                maxTitlesPerPage: newSettings.maxTitlesPerPage,
+                enableRetroGames: newSettings.enableRetroGames,
             },
         });
     }
@@ -94,23 +85,23 @@ export function SettingsProvider({
     const setSavePath = (path: string) =>
         updateSetting("savePath", path);
 
-    const setPreferredQuality = (quality: MediaResolution) =>
-        updateSetting("preferredQuality", quality);
-
-    const setFallbackStrategy = (strategy: MediaFallbackStrategy) =>
-        updateSetting("fallbackStrategy", strategy);
-
     const setMaxTitlePerPage = (num: number) =>
         updateSetting("maxTitlesPerPage", num);
+
+    const setEnableRetroGames = (enabled: boolean) =>
+        updateSetting("enableRetroGames", enabled);
 
     return (
         <SettingsContext.Provider
             value={{
                 settings,
+                isLoaded,
+                operatingSystem: getOperatingSystem(),
+                isLinux: isLinux(),
+                isWindows: isWindows(),
                 setSavePath,
-                setPreferredQuality,
-                setFallbackStrategy,
                 setMaxTitlePerPage,
+                setEnableRetroGames,
             }}
         >
             {children}

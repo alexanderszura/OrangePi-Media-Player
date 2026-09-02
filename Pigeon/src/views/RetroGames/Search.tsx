@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as response from "../../responses";
 import "../../styles/search.css";
 import { useSettings } from "../../SettingsContext";
-import { FaArrowLeftLong, FaArrowRightLong } from "react-icons/fa6";
+import { FaArrowLeftLong, FaArrowRightLong, FaGamepad } from "react-icons/fa6";
 import { invoke } from "@tauri-apps/api/core";
 import Keyboard from "../../components/keyboardCard";
 import { GameCard } from "../../components/gameCard";
@@ -22,7 +22,7 @@ export default function GameSearch() {
         searchRequestId.current = requestId;
         setPage(0);
 
-        if (value === "") {
+        if (value === "" || !settings.enableRetroGames) {
             setGames([]);
             return;
         }
@@ -35,35 +35,23 @@ export default function GameSearch() {
             savePath: settings.savePath
         };
 
-        async function quickSearch() {
+        async function searchCachedGames() {
             try {
-                const quickGames = await invoke<response.GameData[]>("quick_search_roms", payload);
+                const cachedGames = await invoke<response.GameData[]>("search_roms", payload);
                 if (!canceled && searchRequestId.current === requestId) {
-                    setGames(quickGames);
+                    setGames(cachedGames);
                 }
             } catch (error) {
-                console.error("Quick ROM search failed", error);
+                console.error("Cached ROM search failed", error);
             }
         }
 
-        quickSearch();
-
-        const enrichTimeout = window.setTimeout(async () => {
-            try {
-                const enrichedGames = await invoke<response.GameData[]>("search_roms", payload);
-                if (!canceled && searchRequestId.current === requestId) {
-                    setGames(enrichedGames);
-                }
-            } catch (error) {
-                console.error("ROM metadata search failed", error);
-            }
-        }, 1000);
+        searchCachedGames();
 
         return () => {
             canceled = true;
-            window.clearTimeout(enrichTimeout);
         };
-    }, [search, settings.maxTitlesPerPage, settings.savePath]);
+    }, [search, settings.enableRetroGames, settings.maxTitlesPerPage, settings.savePath]);
 
     function rightPage() {
         setPage((page + 1) % maxPages);
@@ -71,6 +59,17 @@ export default function GameSearch() {
 
     function leftPage() {
         setPage((page - 1) % maxPages);
+    }
+
+    if (!settings.enableRetroGames) {
+        return (
+            <div className="search-view search-view--disabled">
+                <div className="search-empty">
+                    <FaGamepad />
+                    <span>Retro Games is disabled in Settings.</span>
+                </div>
+            </div>
+        );
     }
 
     return (
