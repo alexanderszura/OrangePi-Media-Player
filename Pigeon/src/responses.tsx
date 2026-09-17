@@ -49,7 +49,7 @@ export interface SearchResult {
 // Search App Types
 // ============================================================
 
-export interface MediaSearchResult {
+export interface SearchResult {
   id: number;
   media_type: "movie" | "tv";
 
@@ -64,9 +64,9 @@ export interface MediaSearchResult {
   genre_ids?: number[];
 }
 
-export function toMediaSearchResult(
+export function toSearchResult(
   result: SearchResult,
-): MediaSearchResult {
+): SearchResult {
   if (result.media_type !== "movie" && result.media_type !== "tv") {
     throw new Error(`Invalid media type: ${result.media_type}`);
   }

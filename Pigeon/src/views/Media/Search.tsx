@@ -1,19 +1,19 @@
 import { useState } from "react";
 import "../../styles/search.css";
 import { FaArrowLeftLong, FaArrowRightLong } from "react-icons/fa6";
-import { useSettings } from "../../SettingsContext";
 import * as API from "../../api";
 import * as response from "../../responses.tsx"
 import Keyboard from "../../components/keyboardCard.tsx";
 import { MediaCard } from "../../components/mediaCard.tsx";
 
-export default function MediaSearch() {
-    const { settings } = useSettings();
+export default function Search() {
     const [search, setSearch] = useState("");
-    const [media, setMedia] = useState<response.MediaSearchResult[]>([]);
+    const [media, setMedia] = useState<response.SearchResult[]>([]);
     const [page, setPage] = useState(0);
 
-    const maxPages = Math.ceil(media.length / settings.maxTitlesPerPage);
+    const MAX_TITLES_PER_PAGE = 15;
+
+    const maxPages = Math.ceil(media.length / MAX_TITLES_PER_PAGE);
 
     async function updateSearch(value: string) {
         setSearch(value);
@@ -67,8 +67,8 @@ export default function MediaSearch() {
                         <div className="media-container">
                             {media
                                 .slice(
-                                    page * settings.maxTitlesPerPage,
-                                    (page + 1) * settings.maxTitlesPerPage
+                                    page * MAX_TITLES_PER_PAGE,
+                                    (page + 1) * MAX_TITLES_PER_PAGE
                                 )
                                 .map((item) => (
                                     <MediaCard key={item.id} media={item} />

@@ -1,6 +1,6 @@
 import { mediaImagePath } from "../api";
 import { MediaDetails, SeasonEpisode } from "../responses";
-import "./episode-card.css";
+import "./episodeCard.css";
 import { useNavigate } from "react-router-dom";
 import { PlayButton } from "./playButton";
 

@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, Update } from "@tauri-apps/plugin-updater";
 
@@ -75,10 +74,3 @@ export async function attemptUpdateInstall(): Promise<boolean> {
 
   return true;
 }
-
-// async function fixData() {
-//   switch (pendingUpdate?.currentVersion) {
-//     case "0.3.0":
-//       await invoke("update-version", {version: pendingUpdate.version});
-//   }
-// }
