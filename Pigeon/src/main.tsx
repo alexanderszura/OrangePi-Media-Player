@@ -11,6 +11,7 @@ import Play from "./views/Media/Play";
 import { useSpatialNavigation } from "./spatialNavigation";
 import "./styles/theme.css";
 import "./styles/layout.css";
+import { DataProvider } from "./dataContext";
 
 function Layout() {
   useSpatialNavigation();
@@ -56,7 +57,9 @@ const root = document.getElementById("root");
 if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <RouterProvider router={router} />
+      <DataProvider> 
+        <RouterProvider router={router} />
+      </DataProvider>
     </React.StrictMode>
   );
 } else {

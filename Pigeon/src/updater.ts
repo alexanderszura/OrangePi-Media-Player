@@ -1,6 +1,7 @@
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, Update } from "@tauri-apps/plugin-updater";
 import { getVersion } from '@tauri-apps/api/app';
+import { isTauri } from "@tauri-apps/api/core";
 
 let pendingUpdate: Update | null = null;
 let activeCheck: Promise<AvailableUpdate | null> | null = null;
@@ -25,6 +26,8 @@ export async function checkForUpdates(): Promise<AvailableUpdate | null> {
 }
 
 async function checkForUpdatesNow(): Promise<AvailableUpdate | null> {
+  if (!isTauri()) return null;
+
   try {
     const update = await check();
 
@@ -51,6 +54,8 @@ async function checkForUpdatesNow(): Promise<AvailableUpdate | null> {
 }
 
 export async function attemptUpdateInstall(): Promise<boolean> {
+  if (!isTauri()) return false;
+
   if (!pendingUpdate) {
     return false;
   }
@@ -75,5 +80,7 @@ export async function attemptUpdateInstall(): Promise<boolean> {
 }
 
 export async function getCurrentVersion() {
+  if (!isTauri()) return "V_WEB"; // TODO: FIX FOR WEB
+  
   return await getVersion();
 }
