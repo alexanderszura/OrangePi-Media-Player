@@ -2,6 +2,12 @@ import { createContext, useContext } from "react";
 import { MediaDetails } from "./responses";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
+export type MediaIdentifier = {
+    id: number,
+    season: number | null,
+    episode: number | null
+}
+
 const isWeb = !isTauri();
 
 export type WatchProgress = {
@@ -16,12 +22,15 @@ export type WatchProgress = {
 
 interface DataContextType {
     setWatched: (
-        media: MediaDetails,
+        media: MediaIdentifier,
         timeWatched: number,
         totalTime: number
     ) => Promise<void>;
-    getMoviesWatched: (
-        media: MediaDetails[]
+    getWatched: (
+        media: MediaIdentifier
+    ) => Promise<WatchProgress | null>,
+    getMultiWatched: (
+        media: MediaIdentifier[]
     ) => Promise<WatchProgress[]>,
     getSeasonWatched: (
         id: number,
@@ -37,7 +46,7 @@ export function DataProvider({
     children: React.ReactNode;
 }) {
     const setWatched = async (
-        media: MediaDetails,
+        media: MediaIdentifier,
         timeWatched: number,
         totalTime: number
     ) => {
@@ -46,7 +55,7 @@ export function DataProvider({
             return;
         }
 
-        if (media.seasons == undefined) {
+        if (media.season == null) {
             await invoke("set_watched_movie", {
                 mediaId: media.id,
                 timeWatched,
@@ -55,26 +64,34 @@ export function DataProvider({
         } else {
             await invoke("set_watched_tv", {
                 mediaId: media.id,
-                season: media.episode?.season_number,
-                episode: media.episode?.episode_number,
+                season: media.season,
+                episode: media.episode,
                 timeWatched,
                 totalTime,
             });
         }
     };
 
-    const getMoviesWatched = async (
-        media: MediaDetails[]
+    const getWatched = async (
+        media: MediaIdentifier
+    ) => {
+        const data = await getMultiWatched([media]);
+        if (data.length == 0)
+            return null;
+
+        return data[0];
+    }
+
+    const getMultiWatched = async (
+        media: MediaIdentifier[]
     ) => {
         if (isWeb) {
             // TODO: Web Getting
             return [];
         }
 
-        const ids = media.map(item => item.id)
-
-        return await invoke<WatchProgress[]>("get_watched_movies", {
-            media_ids: ids,
+        return await invoke<WatchProgress[]>("get_multi_watch", {
+            mediaIds: media,
         });
     }
 
@@ -88,7 +105,7 @@ export function DataProvider({
         }
 
         return await invoke<WatchProgress[]>("get_watched_movies", {
-            media_id: id,
+            mediaId: id,
             season: season
         });
     }
@@ -97,7 +114,8 @@ export function DataProvider({
         <DataContext.Provider
             value={{
                 setWatched,
-                getMoviesWatched,
+                getWatched,
+                getMultiWatched,
                 getSeasonWatched
             }}
         >
@@ -106,7 +124,7 @@ export function DataProvider({
     );
 }
 
-export function useSettings() {
+export function useDataProvider() {
     const context = useContext(DataContext);
 
     if (!context) {

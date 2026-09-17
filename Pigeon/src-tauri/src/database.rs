@@ -1,6 +1,7 @@
 use rusqlite::{Connection, Result};
 use std::sync::Mutex;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
+use rusqlite::types::Value;
 
 pub struct Database(pub Mutex<Connection>);
 
@@ -125,10 +126,17 @@ pub struct WatchProgress {
     pub updated_at: i64,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MediaIdentifier {
+    pub id: i64,
+    pub season: Option<i64>,
+    pub episode: Option<i64>
+}
+
 #[tauri::command]
-pub fn get_watched_movies(
+pub fn get_multi_watch(
     db: tauri::State<'_, Database>,
-    media_ids: Vec<i64>,
+    media_ids: Vec<MediaIdentifier>,
 ) -> Result<Vec<WatchProgress>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
 
@@ -136,10 +144,22 @@ pub fn get_watched_movies(
         return Ok(Vec::new());
     }
 
-    let placeholders = std::iter::repeat("?")
-        .take(media_ids.len())
-        .collect::<Vec<_>>()
-        .join(", ");
+    let mut conditions = Vec::new();
+    let mut params: Vec<Value> = Vec::new();
+
+    for media in &media_ids {
+        if let (Some(season), Some(episode)) = (media.season, media.episode) {
+            // TV show, match ID, season, and episode
+            conditions.push("(media_id = ? AND media_type = 'tv' AND season = ? AND episode = ?)");
+            params.push(Value::Integer(media.id));
+            params.push(Value::Integer(season));
+            params.push(Value::Integer(episode));
+        } else {
+            // movie, match the ID
+            conditions.push("(media_id = ? AND media_type = 'movie')");
+            params.push(Value::Integer(media.id));
+        }
+    }
 
     let sql = format!(
         "
@@ -152,18 +172,16 @@ pub fn get_watched_movies(
             total_time,
             updated_at
         FROM watch_progress
-        WHERE media_type = 'movie'
-          AND media_id IN ({})
+        WHERE {}
         ",
-        placeholders
+        conditions.join(" OR ")
     );
 
-    let mut stmt = conn.prepare(&sql)
-        .map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
 
     let rows = stmt
         .query_map(
-            rusqlite::params_from_iter(media_ids.iter()),
+            rusqlite::params_from_iter(params),
             |row| {
                 Ok(WatchProgress {
                     media_id: row.get(0)?,

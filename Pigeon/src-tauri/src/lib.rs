@@ -28,7 +28,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             database::set_watched_movie,
             database::set_watched_tv,
-            database::get_watched_movies,
+            database::get_multi_watch,
             database::get_watched_tv_season
         ])
         .run(tauri::generate_context!())
