@@ -1,6 +1,5 @@
 import {
   type ApiMediaDetails,
-  GameImageType,
   type MediaDetails,
   type SearchResult,
   type SearchResponse,
@@ -111,10 +110,3 @@ export async function fetchSeasonInfo(
   return toSeasonDetails(response);
 }
 
-export function gameImagePath(imageId: string | undefined, type: GameImageType, nullValue="noImage.jpg") {
-  if (imageId == undefined) {
-    return nullValue;
-  }
-
-  return `https://images.igdb.com/igdb/image/upload/t_${type}/${imageId}.jpg`
-}

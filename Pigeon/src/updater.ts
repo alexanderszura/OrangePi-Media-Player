@@ -1,5 +1,6 @@
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, Update } from "@tauri-apps/plugin-updater";
+import { getVersion } from '@tauri-apps/api/app';
 
 let pendingUpdate: Update | null = null;
 let activeCheck: Promise<AvailableUpdate | null> | null = null;
@@ -59,8 +60,6 @@ export async function attemptUpdateInstall(): Promise<boolean> {
 
     await pendingUpdate.downloadAndInstall();
 
-    // await fixData();
-
     await relaunch();
 
   } catch (error) {
@@ -73,4 +72,8 @@ export async function attemptUpdateInstall(): Promise<boolean> {
   }
 
   return true;
+}
+
+export async function getCurrentVersion() {
+  return await getVersion();
 }

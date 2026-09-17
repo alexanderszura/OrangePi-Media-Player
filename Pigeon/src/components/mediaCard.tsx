@@ -19,10 +19,14 @@ export function MediaCard({ media }: MediaCardProps) {
         className="media-card__poster"
         role="button"
         tabIndex={0}
-        onClick={() => navigate(`/title/${media.media_type}/${media.id}`)}
+        onClick={() => {
+          const type = media.media_type === "tv" ? "TV" : "Movie";
+          navigate(`/title/${type}/${media.id}`)
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
-            navigate(`/title/${media.media_type}/${media.id}`);
+            const type = media.media_type === "tv" ? "TV" : "Movie";
+            navigate(`/title/${type}/${media.id}`);
           }
         }}
       >

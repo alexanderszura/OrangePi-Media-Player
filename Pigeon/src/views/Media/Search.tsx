@@ -1,15 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "../../styles/search.css";
 import { FaArrowLeftLong, FaArrowRightLong } from "react-icons/fa6";
 import * as API from "../../api";
-import * as response from "../../responses.tsx"
+import { SearchResult } from "../../responses";
 import Keyboard from "../../components/keyboardCard.tsx";
 import { MediaCard } from "../../components/mediaCard.tsx";
+import { getCurrentVersion } from "../../updater.ts";
 
 export default function Search() {
     const [search, setSearch] = useState("");
-    const [media, setMedia] = useState<response.SearchResult[]>([]);
+    const [media, setMedia] = useState<SearchResult[]>([]);
     const [page, setPage] = useState(0);
+    const [version, setVersion] = useState("");
+
+    useEffect(() => {
+        getCurrentVersion().then(setVersion);
+    }, []);
 
     const MAX_TITLES_PER_PAGE = 15;
 
@@ -55,6 +61,10 @@ export default function Search() {
                     }}
                     clearCallback={() => updateSearch("")}
                 />
+
+                <div className='version'>
+                    V{version}
+                </div>
             </div>
 
             <div className="search-results">

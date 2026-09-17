@@ -22,6 +22,7 @@
   transform: translateY(-4px);
   border-color: var(--border-strong);
   box-shadow: var(--shadow-card), var(--shadow-glow-accent);
+  cursor: pointer;
 }
 
 .media-card__poster img {
