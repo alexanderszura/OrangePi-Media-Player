@@ -201,6 +201,50 @@ pub fn get_multi_watch(
 }
 
 #[tauri::command]
+pub fn get_latest_unfinished(
+    db: tauri::State<'_, Database>,
+    limit: i64,
+) -> Result<Vec<WatchProgress>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare(
+            "
+            SELECT
+                media_id,
+                media_type,
+                season,
+                episode,
+                time_watched,
+                total_time,
+                updated_at
+            FROM watch_progress
+            WHERE time_watched < total_time
+            ORDER BY updated_at DESC
+            LIMIT ?1
+            ",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map([limit], |row| {
+            Ok(WatchProgress {
+                media_id: row.get(0)?,
+                media_type: row.get(1)?,
+                season: row.get(2)?,
+                episode: row.get(3)?,
+                time_watched: row.get(4)?,
+                total_time: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn get_watched_tv_season(
     db: tauri::State<'_, Database>,
     media_id: i64,
