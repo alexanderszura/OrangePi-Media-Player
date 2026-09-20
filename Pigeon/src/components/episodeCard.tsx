@@ -3,16 +3,22 @@ import { MediaDetails, SeasonEpisode } from "../responses";
 import "./episodeCard.css";
 import { useNavigate } from "react-router-dom";
 import { PlayButton } from "./playButton";
+import { WatchProgress } from "../dataContext";
 
 interface EpisodeCardProps {
     details: MediaDetails
     episode: SeasonEpisode
+    progress?: WatchProgress
 }
 
-export function EpisodeCard({ episode, details }: EpisodeCardProps) {
+export function EpisodeCard({ episode, details, progress }: EpisodeCardProps) {
   const imageUrl = mediaImagePath(episode.still_path);
 
   const navigate = useNavigate();
+  const percentageWatched =
+    progress == null || progress.total_time <= 0
+      ? 0
+      : Math.min(100, Math.max(0, (progress.time_watched / progress.total_time) * 100));
 
   const fullDetails: MediaDetails = {
       ...details,
@@ -33,6 +39,11 @@ export function EpisodeCard({ episode, details }: EpisodeCardProps) {
 
         <div className="episode-thumb">
             <img src={imageUrl} alt={episode.name} />
+            {progress && (
+                <div className="episode-progress" role="progressbar" aria-valuenow={Math.round(percentageWatched)} aria-valuemin={0} aria-valuemax={100} aria-label={`Watch progress: ${Math.round(percentageWatched)}%`}>
+                    <div className="episode-progress-fill" style={{ width: `${percentageWatched}%` }} />
+                </div>
+            )}
         </div>
 
         <div className="episode-info">

@@ -179,6 +179,7 @@ export function toMediaDetails(
     id: response.id,
     title: response.name,
     overview: response.overview,
+    poster_path: response.poster_path,
     backdrop_path: response.backdrop_path,
     release_date: response.first_air_date,
     vote_average: response.vote_average,

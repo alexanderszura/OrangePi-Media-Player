@@ -34,7 +34,7 @@
 .media-card__type {
   position: absolute;
   left: 10px;
-  bottom: 10px;
+  bottom: 16px;
   padding: 3px 10px;
   border-radius: var(--radius-pill);
   background: rgba(10, 10, 13, 0.75);
@@ -62,4 +62,20 @@
   margin-top: -6px;
   font-size: 0.78rem;
   color: var(--text-faint);
+}
+
+.media-card__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  background: rgba(10, 10, 13, 0.7);
+  overflow: hidden;
+}
+
+.media-card__progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
 }

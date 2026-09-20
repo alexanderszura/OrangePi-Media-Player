@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useDataProvider, WatchProgress } from "../../dataContext";
+import { useDataProvider, WatchMetadata, WatchProgress } from "../../dataContext";
+import { fetchTitleInfo } from "../../api";
 
 const MEDIA_SERVER_URL = "https://cinesrc.st";
 // Changed 'back' parameter to 'close' so it emits the 'cinesrc:close' event
@@ -55,6 +56,7 @@ function buildEmbedSrc(state: PlayState): string {
 export default function Play({ type }: PlayProps) {
   const { setWatched, getWatched } = useDataProvider();
   const [ watchProgress, setWatchProgress ] = useState<WatchProgress | null>(null);
+  const [ metadata, setMetadata ] = useState<WatchMetadata | undefined>();
   const navigate = useNavigate();
   const playState = usePlayState(type);
 
@@ -73,10 +75,42 @@ export default function Play({ type }: PlayProps) {
   // We use a ref to track the latest time continuously without causing React re-renders
   const playbackRef = useRef({ currentTime: 0, duration: 0 });
   const lastSavedTimeRef = useRef(0);
+  const metadataRef = useRef<WatchMetadata | undefined>(undefined);
+
+  useEffect(() => {
+    metadataRef.current = metadata;
+  }, [metadata]);
 
   useEffect(() => {
     const load = async () => {
-      setWatchProgress(await getWatched(media));
+      const progress = await getWatched(media);
+      setWatchProgress(progress);
+
+      if (!playState) return;
+
+      try {
+        const details = await fetchTitleInfo(playState.type, Number(playState.id));
+        const nextMetadata: WatchMetadata = {
+          title: details.title,
+          release_date: details.release_date,
+          poster_path: details.poster_path,
+          backdrop_path: details.backdrop_path,
+        };
+
+        setMetadata(nextMetadata);
+        metadataRef.current = nextMetadata;
+
+        if (progress != null) {
+          await setWatched(
+            media,
+            progress.time_watched,
+            progress.total_time,
+            nextMetadata
+          );
+        }
+      } catch (error) {
+        console.error(error);
+      }
     };
 
     void load();
@@ -94,16 +128,21 @@ export default function Play({ type }: PlayProps) {
         case 'cinesrc:timeupdate':          
           playbackRef.current = {
             currentTime: data.currentTime || 0,
-            duration: data.duration || 0,
+            duration: data.duration || 1,
           };
+
+          const completionThreshold = duration - Math.min(Math.max(duration * 0.08, 150), 480);
 
           if (Math.abs(currentTime - lastSavedTimeRef.current) >= 5) {
             lastSavedTimeRef.current = currentTime;
+
+            // console.log(`Current Time: ${currentTime} CompletionThreshold: ${completionThreshold}, Completed: ${currentTime >= completionThreshold}`);
             
             setWatched(
               media,
-              Math.floor(currentTime),
-              Math.round(duration)
+              currentTime >= completionThreshold ? Math.round(duration) : Math.floor(currentTime),
+              Math.round(duration),
+              metadataRef.current
             ).catch(console.error);
           }
 
@@ -115,7 +154,8 @@ export default function Play({ type }: PlayProps) {
           setWatched(
             media,
             Math.floor(currentTime),
-            Math.round(duration)
+            Math.round(duration),
+            metadataRef.current
           );
           
           navigate(-1);

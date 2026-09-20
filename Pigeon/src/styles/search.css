@@ -136,6 +136,14 @@
   padding: 40px 48px;
 }
 
+.continue-text {
+  margin-bottom: 18px;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
 .media-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));

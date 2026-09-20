@@ -1,7 +1,7 @@
-use rusqlite::{Connection, Result};
-use std::sync::Mutex;
-use serde::{Serialize, Deserialize};
 use rusqlite::types::Value;
+use rusqlite::{Connection, Result};
+use serde::{Deserialize, Serialize};
+use std::sync::Mutex;
 
 pub struct Database(pub Mutex<Connection>);
 
@@ -26,7 +26,64 @@ pub fn init_db(path: &std::path::Path) -> Result<Connection> {
         ",
     )?;
 
+    ensure_column(&conn, "title", "title TEXT")?;
+    ensure_column(&conn, "release_date", "release_date TEXT")?;
+    ensure_column(&conn, "poster_path", "poster_path TEXT")?;
+    ensure_column(&conn, "backdrop_path", "backdrop_path TEXT")?;
+
+    conn.execute_batch(
+        "
+        DELETE FROM watch_progress
+        WHERE rowid NOT IN (
+            SELECT rowid
+            FROM (
+                SELECT
+                    rowid,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY
+                            media_id,
+                            media_type,
+                            COALESCE(season, -1),
+                            COALESCE(episode, -1)
+                        ORDER BY updated_at DESC, rowid DESC
+                    ) AS dedupe_rank
+                FROM watch_progress
+            )
+            WHERE dedupe_rank = 1
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS watch_progress_unique_key
+        ON watch_progress (
+            media_id,
+            media_type,
+            COALESCE(season, -1),
+            COALESCE(episode, -1)
+        );
+        ",
+    )?;
+
     Ok(conn)
+}
+
+fn ensure_column(conn: &Connection, column_name: &str, column_definition: &str) -> Result<()> {
+    let mut stmt = conn.prepare("PRAGMA table_info(watch_progress)")?;
+    let columns = stmt.query_map([], |row| row.get::<_, String>(1))?;
+
+    for column in columns {
+        if column? == column_name {
+            return Ok(());
+        }
+    }
+
+    conn.execute(
+        &format!(
+            "ALTER TABLE watch_progress ADD COLUMN {}",
+            column_definition
+        ),
+        [],
+    )?;
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -35,6 +92,10 @@ pub fn set_watched_movie(
     media_id: i64,
     time_watched: i64,
     total_time: i64,
+    title: Option<String>,
+    release_date: Option<String>,
+    poster_path: Option<String>,
+    backdrop_path: Option<String>,
 ) -> Result<(), String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
 
@@ -47,7 +108,11 @@ pub fn set_watched_movie(
             episode,
             time_watched,
             total_time,
-            updated_at
+            updated_at,
+            title,
+            release_date,
+            poster_path,
+            backdrop_path
         )
         VALUES (
             ?1,
@@ -56,15 +121,31 @@ pub fn set_watched_movie(
             NULL,
             ?2,
             ?3,
-            unixepoch()
+            unixepoch(),
+            ?4,
+            ?5,
+            ?6,
+            ?7
         )
-        ON CONFLICT(media_id, media_type, season, episode)
+        ON CONFLICT
         DO UPDATE SET
             time_watched = excluded.time_watched,
             total_time = excluded.total_time,
-            updated_at = excluded.updated_at
+            updated_at = excluded.updated_at,
+            title = COALESCE(excluded.title, watch_progress.title),
+            release_date = COALESCE(excluded.release_date, watch_progress.release_date),
+            poster_path = COALESCE(excluded.poster_path, watch_progress.poster_path),
+            backdrop_path = COALESCE(excluded.backdrop_path, watch_progress.backdrop_path)
         ",
-        (media_id, time_watched, total_time),
+        (
+            media_id,
+            time_watched,
+            total_time,
+            title,
+            release_date,
+            poster_path,
+            backdrop_path,
+        ),
     )
     .map_err(|e| e.to_string())?;
 
@@ -79,6 +160,10 @@ pub fn set_watched_tv(
     episode: i64,
     time_watched: i64,
     total_time: i64,
+    title: Option<String>,
+    release_date: Option<String>,
+    poster_path: Option<String>,
+    backdrop_path: Option<String>,
 ) -> Result<(), String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
 
@@ -91,7 +176,11 @@ pub fn set_watched_tv(
             episode,
             time_watched,
             total_time,
-            updated_at
+            updated_at,
+            title,
+            release_date,
+            poster_path,
+            backdrop_path
         )
         VALUES (
             ?1,
@@ -100,15 +189,33 @@ pub fn set_watched_tv(
             ?3,
             ?4,
             ?5,
-            unixepoch()
+            unixepoch(),
+            ?6,
+            ?7,
+            ?8,
+            ?9
         )
-        ON CONFLICT(media_id, media_type, season, episode)
+        ON CONFLICT
         DO UPDATE SET
             time_watched = excluded.time_watched,
             total_time = excluded.total_time,
-            updated_at = excluded.updated_at
+            updated_at = excluded.updated_at,
+            title = COALESCE(excluded.title, watch_progress.title),
+            release_date = COALESCE(excluded.release_date, watch_progress.release_date),
+            poster_path = COALESCE(excluded.poster_path, watch_progress.poster_path),
+            backdrop_path = COALESCE(excluded.backdrop_path, watch_progress.backdrop_path)
         ",
-        (media_id, season, episode, time_watched, total_time),
+        (
+            media_id,
+            season,
+            episode,
+            time_watched,
+            total_time,
+            title,
+            release_date,
+            poster_path,
+            backdrop_path,
+        ),
     )
     .map_err(|e| e.to_string())?;
 
@@ -124,13 +231,17 @@ pub struct WatchProgress {
     pub time_watched: i64,
     pub total_time: i64,
     pub updated_at: i64,
+    pub title: Option<String>,
+    pub release_date: Option<String>,
+    pub poster_path: Option<String>,
+    pub backdrop_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MediaIdentifier {
     pub id: i64,
     pub season: Option<i64>,
-    pub episode: Option<i64>
+    pub episode: Option<i64>,
 }
 
 #[tauri::command]
@@ -170,7 +281,11 @@ pub fn get_multi_watch(
             episode,
             time_watched,
             total_time,
-            updated_at
+            updated_at,
+            title,
+            release_date,
+            poster_path,
+            backdrop_path
         FROM watch_progress
         WHERE {}
         ",
@@ -180,20 +295,21 @@ pub fn get_multi_watch(
     let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
 
     let rows = stmt
-        .query_map(
-            rusqlite::params_from_iter(params),
-            |row| {
-                Ok(WatchProgress {
-                    media_id: row.get(0)?,
-                    media_type: row.get(1)?,
-                    season: row.get(2)?,
-                    episode: row.get(3)?,
-                    time_watched: row.get(4)?,
-                    total_time: row.get(5)?,
-                    updated_at: row.get(6)?,
-                })
-            },
-        )
+        .query_map(rusqlite::params_from_iter(params), |row| {
+            Ok(WatchProgress {
+                media_id: row.get(0)?,
+                media_type: row.get(1)?,
+                season: row.get(2)?,
+                episode: row.get(3)?,
+                time_watched: row.get(4)?,
+                total_time: row.get(5)?,
+                updated_at: row.get(6)?,
+                title: row.get(7)?,
+                release_date: row.get(8)?,
+                poster_path: row.get(9)?,
+                backdrop_path: row.get(10)?,
+            })
+        })
         .map_err(|e| e.to_string())?;
 
     rows.collect::<Result<Vec<_>, _>>()
@@ -217,7 +333,11 @@ pub fn get_latest_unfinished(
                 episode,
                 time_watched,
                 total_time,
-                updated_at
+                updated_at,
+                title,
+                release_date,
+                poster_path,
+                backdrop_path
             FROM watch_progress
             WHERE time_watched < total_time
             ORDER BY updated_at DESC
@@ -236,6 +356,61 @@ pub fn get_latest_unfinished(
                 time_watched: row.get(4)?,
                 total_time: row.get(5)?,
                 updated_at: row.get(6)?,
+                title: row.get(7)?,
+                release_date: row.get(8)?,
+                poster_path: row.get(9)?,
+                backdrop_path: row.get(10)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_latest_watched(
+    db: tauri::State<'_, Database>,
+    limit: i64,
+) -> Result<Vec<WatchProgress>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare(
+            "
+            SELECT
+                media_id,
+                media_type,
+                season,
+                episode,
+                time_watched,
+                total_time,
+                updated_at,
+                title,
+                release_date,
+                poster_path,
+                backdrop_path
+            FROM watch_progress
+            ORDER BY updated_at DESC
+            LIMIT ?1
+            ",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map([limit], |row| {
+            Ok(WatchProgress {
+                media_id: row.get(0)?,
+                media_type: row.get(1)?,
+                season: row.get(2)?,
+                episode: row.get(3)?,
+                time_watched: row.get(4)?,
+                total_time: row.get(5)?,
+                updated_at: row.get(6)?,
+                title: row.get(7)?,
+                release_date: row.get(8)?,
+                poster_path: row.get(9)?,
+                backdrop_path: row.get(10)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -262,7 +437,11 @@ pub fn get_watched_tv_season(
                 episode,
                 time_watched,
                 total_time,
-                updated_at
+                updated_at,
+                title,
+                release_date,
+                poster_path,
+                backdrop_path
             FROM watch_progress
             WHERE media_id = ?1
               AND media_type = 'tv'
@@ -282,6 +461,10 @@ pub fn get_watched_tv_season(
                 time_watched: row.get(4)?,
                 total_time: row.get(5)?,
                 updated_at: row.get(6)?,
+                title: row.get(7)?,
+                release_date: row.get(8)?,
+                poster_path: row.get(9)?,
+                backdrop_path: row.get(10)?,
             })
         })
         .map_err(|e| e.to_string())?;

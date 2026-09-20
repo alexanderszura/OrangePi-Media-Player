@@ -6,22 +6,34 @@ import { EpisodeCard } from "../../components/episodeCard";
 import { FaArrowLeft } from "react-icons/fa6";
 import "../../styles/detail.css";
 import TVDropdown from "../../components/dropdown";
+import { useDataProvider, WatchProgress } from "../../dataContext";
 
 export default function TVDetails() {
     const titleInfo = useLoaderData() as MediaDetails;
     const navigate = useNavigate();
+    const { getSeasonWatched } = useDataProvider();
     
     const [season, setSeason] = useState<SeasonDetails | null>(null);
     const [seasonNumber, setSeasonNumber] = useState(1);
+    const [episodeProgressMap, setEpisodeProgressMap] = useState<Map<number, WatchProgress>>(new Map());
 
     useEffect(() => {
         const load = async () => {
-            const seasonData = await fetchSeasonInfo(titleInfo.id, seasonNumber);
+            const [seasonData, progress] = await Promise.all([
+                fetchSeasonInfo(titleInfo.id, seasonNumber),
+                getSeasonWatched(titleInfo.id, seasonNumber),
+            ]);
+
             setSeason(seasonData);
+            setEpisodeProgressMap(new Map(
+                progress
+                    .filter(item => item.episode != null)
+                    .map(item => [item.episode as number, item])
+            ));
         };
 
         load();
-    }, [titleInfo.id, seasonNumber]);
+    }, [titleInfo.id, seasonNumber, getSeasonWatched]);
 
     const seasonCount = titleInfo.seasons?.length ?? 0;
 
@@ -91,7 +103,12 @@ export default function TVDetails() {
                         </div>
                     ) : (
                         season.episodes.map((e) => (
-                            <EpisodeCard key={e.id} episode={e} details={titleInfo} />
+                            <EpisodeCard
+                                key={e.id}
+                                episode={e}
+                                details={titleInfo}
+                                progress={episodeProgressMap.get(e.episode_number)}
+                            />
                         ))
                     )}
                 </div>
