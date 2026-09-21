@@ -1,5 +1,5 @@
 use rusqlite::types::Value;
-use rusqlite::{Connection, Result};
+use rusqlite::{Connection, OptionalExtension, Result};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 
@@ -242,6 +242,40 @@ pub struct MediaIdentifier {
     pub id: i64,
     pub season: Option<i64>,
     pub episode: Option<i64>,
+}
+
+#[tauri::command]
+pub fn get_latest_tv(
+    db: tauri::State<'_, Database>,
+    media_id: i64,
+) -> Result<Option<MediaIdentifier>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+
+    conn.query_row(
+        "
+        SELECT
+            media_id,
+            season,
+            episode
+        FROM watch_progress
+        WHERE media_id = ?1
+          AND media_type = 'tv'
+          AND season IS NOT NULL
+          AND episode IS NOT NULL
+        ORDER BY updated_at DESC
+        LIMIT 1
+        ",
+        [media_id],
+        |row| {
+            Ok(MediaIdentifier {
+                id: row.get(0)?,
+                season: row.get(1)?,
+                episode: row.get(2)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

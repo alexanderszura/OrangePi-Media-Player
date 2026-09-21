@@ -28,6 +28,7 @@ pub fn run() {
             database::set_watched_movie,
             database::set_watched_tv,
             database::get_multi_watch,
+            database::get_latest_tv,
             database::get_watched_tv_season,
             database::get_latest_unfinished,
             database::get_latest_watched

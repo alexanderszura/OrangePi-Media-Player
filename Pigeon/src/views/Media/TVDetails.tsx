@@ -11,11 +11,21 @@ import { useDataProvider, WatchProgress } from "../../dataContext";
 export default function TVDetails() {
     const titleInfo = useLoaderData() as MediaDetails;
     const navigate = useNavigate();
-    const { getSeasonWatched } = useDataProvider();
+    const { getLatestTV, getSeasonWatched } = useDataProvider();
     
     const [season, setSeason] = useState<SeasonDetails | null>(null);
     const [seasonNumber, setSeasonNumber] = useState(1);
     const [episodeProgressMap, setEpisodeProgressMap] = useState<Map<number, WatchProgress>>(new Map());
+
+    useEffect(() => {
+        const loadLatest = async () => {
+            const latest = await getLatestTV(titleInfo.id);
+
+            setSeasonNumber(latest?.season ?? 1);
+        };
+
+        loadLatest();
+    }, [titleInfo.id]);
 
     useEffect(() => {
         const load = async () => {
@@ -33,7 +43,7 @@ export default function TVDetails() {
         };
 
         load();
-    }, [titleInfo.id, seasonNumber, getSeasonWatched]);
+    }, [titleInfo.id, seasonNumber]);
 
     const seasonCount = titleInfo.seasons?.length ?? 0;
 

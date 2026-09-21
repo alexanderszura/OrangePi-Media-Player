@@ -47,6 +47,9 @@ interface DataContextType {
         id: number,
         season: number
     ) => Promise<WatchProgress[]>;
+    getLatestTV: (
+        id: number
+    ) => Promise<MediaIdentifier | null>;
     getLatestUnfinished: (
         limit: number
     ) => Promise<WatchProgress[]>;
@@ -197,6 +200,34 @@ export function DataProvider({
         });
     };
 
+    const getLatestTV = async (
+        id: number
+    ): Promise<MediaIdentifier | null> => {
+        if (isWeb) {
+            const history = getWatchHistory();
+            const latest = Object.values(history)
+                .filter((p) =>
+                    p.media_id === id &&
+                    p.media_type === "tv" &&
+                    p.season != null &&
+                    p.episode != null
+                )
+                .sort((a, b) => b.updated_at - a.updated_at)[0];
+
+            if (!latest) return null;
+
+            return {
+                id: latest.media_id,
+                season: latest.season ?? null,
+                episode: latest.episode ?? null,
+            };
+        }
+
+        return await invoke<MediaIdentifier | null>("get_latest_tv", {
+            mediaId: id,
+        });
+    };
+
     const getLatestUnfinished = async (
         limit: number
     ): Promise<WatchProgress[]> => {
@@ -235,6 +266,7 @@ export function DataProvider({
                 getWatched,
                 getMultiWatched,
                 getSeasonWatched,
+                getLatestTV,
                 getLatestUnfinished,
                 getLatestWatched,
             }}
