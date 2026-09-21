@@ -1,20 +1,36 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { MediaDetails } from "../responses";
 import { FaCirclePlay } from "react-icons/fa6";
 import "./playButton.css"
 import { useNavigate } from "react-router-dom";
+import { useDataProvider, WatchProgress } from "../dataContext";
 
 interface PlayButtonProps {
     type: "tv" | "movie",
     details: MediaDetails
 }
 
-export function PlayButton({type, details}: PlayButtonProps) {
+export function PlayButton({ type, details }: PlayButtonProps) {
     const navigate = useNavigate();
     const [isChoiceOpen, setIsChoiceOpen] = useState(false);
+    const [watchProgress, setWatchProgress] = useState<WatchProgress | null>(null);
+
+    const { getWatched } = useDataProvider();
 
     const episodeData = details?.episode;
+
+    useEffect(() => {
+        const load = async () => {
+            setWatchProgress(await getWatched({
+                id: details.id,
+                season: episodeData?.season_number ?? null,
+                episode: episodeData?.episode_number ?? null
+            }));
+        };
+
+        load();
+    }, [details]);
 
     let mediaName; 
     if (type == "tv") {
@@ -77,7 +93,13 @@ export function PlayButton({type, details}: PlayButtonProps) {
                 type="button"
                 className="play-button-icon"
                 aria-label={`Play ${mediaName}`}
-                onClick={() => setIsChoiceOpen(true)}
+                onClick={() => {
+                    if (watchProgress) {
+                        setIsChoiceOpen(true)
+                    } else {
+                        playNavigation(false)
+                    }
+                }}
             >
                 <FaCirclePlay />
             </button>

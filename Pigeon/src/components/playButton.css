@@ -8,9 +8,9 @@
   padding: 0;
   margin: 0;
   border-radius: 50%;
-  border: 1px solid rgba(255, 62, 120, 0.4);
-  background: rgba(255, 62, 120, 0.1);
-  color: var(--play-soft);
+  border: 1px solid rgba(255, 157, 61, 0.4);
+  background: rgba(255, 157, 61, 0.1);
+  color: var(--accent-soft);
   font-size: 1.15rem;
   line-height: 1;
   appearance: none;
@@ -28,8 +28,8 @@
 
 .play-button-icon:hover,
 .play-button-icon:focus-visible {
-  background: rgba(255, 62, 120, 0.22);
-  box-shadow: var(--shadow-glow-play);
+  background: rgba(255, 157, 61, 0.22);
+  box-shadow: var(--shadow-glow-accent);
   transform: scale(1.06);
 }
 
@@ -43,7 +43,9 @@
   width: 100vw;
   height: 100vh;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.62);
+  background:
+    radial-gradient(ellipse 420px 260px at 50% 48%, rgba(255, 157, 61, 0.12), transparent 70%),
+    rgba(0, 0, 0, 0.64);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -55,7 +57,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  box-shadow: var(--shadow-card), var(--shadow-glow-play);
+  box-shadow: var(--shadow-card), var(--shadow-glow-accent);
 }
 
 .play-choice__actions {
@@ -88,15 +90,15 @@
 }
 
 .play-choice__button--primary {
-  border-color: rgba(255, 62, 120, 0.45);
-  background: rgba(255, 62, 120, 0.14);
-  color: var(--play-soft);
+  border-color: rgba(255, 157, 61, 0.45);
+  background: rgba(255, 157, 61, 0.14);
+  color: var(--accent-soft);
 }
 
 .play-choice__button--primary:hover,
 .play-choice__button--primary:focus-visible {
-  background: rgba(255, 62, 120, 0.22);
-  box-shadow: var(--shadow-glow-play);
+  background: rgba(255, 157, 61, 0.22);
+  box-shadow: var(--shadow-glow-accent);
 }
 
 @media (max-width: 520px) {
