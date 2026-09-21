@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDataProvider, WatchMetadata, WatchProgress } from "../../dataContext";
 import { fetchTitleInfo } from "../../api";
@@ -59,6 +59,9 @@ export default function Play({ type }: PlayProps) {
   const [ metadata, setMetadata ] = useState<WatchMetadata | undefined>();
   const navigate = useNavigate();
   const playState = usePlayState(type);
+
+  const location = useLocation();
+  const shouldContinue = location.state?.continue as boolean | undefined;
 
   const { id, season, episode } = useParams<{
     id: string;
@@ -176,9 +179,9 @@ export default function Play({ type }: PlayProps) {
       <iframe
         src={
           buildEmbedSrc(playState) +
-          (watchProgress == null
-            ? ""
-            : `&t=${watchProgress.time_watched}`)
+          (watchProgress != null && (shouldContinue || shouldContinue === undefined)
+            ? `&t=${watchProgress?.time_watched}`
+            : "")
         }
         width="100%"
         height="100%"
