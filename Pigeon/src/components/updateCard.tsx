@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { FaDownload, FaXmark } from "react-icons/fa6";
 import {
@@ -9,6 +9,8 @@ import {
 import "./updateCard.css";
 
 const UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+const DEFERRED_UPDATE_IDLE_MS = 10 * 60 * 1000;
+const DEFERRED_UPDATE_POLL_MS = 30 * 1000;
 
 export default function UpdateCard() {
   const location = useLocation();
@@ -21,10 +23,16 @@ export default function UpdateCard() {
 
   const isPlayScreen = location.pathname.startsWith("/play/");
   const isPlayScreenRef = useRef(isPlayScreen);
+  const isInstallingRef = useRef(false);
+  const lastActivityAtRef = useRef(Date.now());
 
   useEffect(() => {
     isPlayScreenRef.current = isPlayScreen;
   }, [isPlayScreen]);
+
+  useEffect(() => {
+    isInstallingRef.current = isInstalling;
+  }, [isInstalling]);
 
   useEffect(() => {
     let isMounted = true;
@@ -73,11 +81,10 @@ export default function UpdateCard() {
     }
   }, [isVisible]);
 
-  if (!availableUpdate || !isVisible || isPlayScreen) {
-    return null;
-  }
+  const installUpdate = useCallback(async () => {
+    if (isInstallingRef.current) return;
 
-  async function installUpdate() {
+    isInstallingRef.current = true;
     setIsInstalling(true);
     setError(null);
 
@@ -85,15 +92,67 @@ export default function UpdateCard() {
 
     if (!didInstall) {
       setError("The update could not be installed. Please try again.");
+      isInstallingRef.current = false;
       setIsInstalling(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const recordActivity = () => {
+      lastActivityAtRef.current = Date.now();
+    };
+
+    const activityEvents = [
+      "keydown",
+      "mousedown",
+      "mousemove",
+      "pointerdown",
+      "scroll",
+      "touchstart",
+      "wheel",
+    ] as const;
+
+    activityEvents.forEach((eventName) => {
+      window.addEventListener(eventName, recordActivity, { passive: true });
+    });
+
+    return () => {
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, recordActivity);
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!availableUpdate || snoozedVersion !== availableUpdate.version) return;
+
+    const installWhenIdle = () => {
+      if (isInstallingRef.current || isPlayScreenRef.current) return;
+
+      const idleForMs = Date.now() - lastActivityAtRef.current;
+
+      if (idleForMs >= DEFERRED_UPDATE_IDLE_MS) {
+        installUpdate();
+      }
+    };
+
+    const interval = window.setInterval(installWhenIdle, DEFERRED_UPDATE_POLL_MS);
+    installWhenIdle();
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [availableUpdate, installUpdate, snoozedVersion]);
 
   function dismissUpdate() {
     if (!availableUpdate) return;
 
     setSnoozedVersion(availableUpdate.version);
     setIsVisible(false);
+  }
+
+  if (!availableUpdate || !isVisible || isPlayScreen) {
+    return null;
   }
 
   return (
@@ -118,6 +177,9 @@ export default function UpdateCard() {
         <h2 className="update-card__title" id="update-card-title">
           Would you like to update now?
         </h2>
+        <p className="update-card__body">
+          Choosing Later will install this update after 10 minutes of inactivity.
+        </p>
 
         <div className="update-card__versions" aria-label="Version details">
           <div>
