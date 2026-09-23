@@ -5,7 +5,7 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
-  
+
 jobs:
   release:
     name: Build and Release
@@ -97,3 +97,53 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+
+  # --------------------------------------------------
+  # Web build
+  # --------------------------------------------------
+  web-build:
+    name: Build Web App
+
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Pigeon/package-lock.json
+
+      - name: Install npm packages
+        working-directory: Pigeon
+        run: npm ci
+
+      - name: Create TypeScript secrets
+        shell: bash
+        run: |
+          cat > Pigeon/src/secrets.ts <<'EOF'
+          ${{ secrets.TS_SECRETS }}
+          EOF
+
+      - name: Build web app
+        working-directory: Pigeon
+        run: npm run build
+
+      - name: Create web app archive
+        working-directory: Pigeon
+        run: |
+          tar -czf ../Pigeon-web-${{ github.ref_name }}.tar.gz dist
+
+      - name: Upload web app to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: Pigeon-web-${{ github.ref_name }}.tar.gz
+          token: ${{ secrets.GITHUB_TOKEN }}
