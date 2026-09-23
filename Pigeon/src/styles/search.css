@@ -15,6 +15,7 @@
   gap: 20px;
   padding: 40px 32px;
   border-right: 1px solid var(--border);
+  position: relative;
 }
 
 .search-heading {
@@ -135,6 +136,14 @@
   padding: 40px 48px;
 }
 
+.continue-text {
+  margin-bottom: 18px;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
 .media-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -204,4 +213,11 @@
 .page-button button:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+.version {
+  color: rgb(68, 68, 68);
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
 }

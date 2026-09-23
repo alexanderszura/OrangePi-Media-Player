@@ -6,18 +6,41 @@ import { EpisodeCard } from "../../components/episodeCard";
 import { FaArrowLeft } from "react-icons/fa6";
 import "../../styles/detail.css";
 import TVDropdown from "../../components/dropdown";
+import { MediaIdentifier, useDataProvider, WatchProgress } from "../../dataContext";
 
 export default function TVDetails() {
     const titleInfo = useLoaderData() as MediaDetails;
     const navigate = useNavigate();
+    const { getLatestTV, getSeasonWatched } = useDataProvider();
     
     const [season, setSeason] = useState<SeasonDetails | null>(null);
     const [seasonNumber, setSeasonNumber] = useState(1);
+    const [episodeProgressMap, setEpisodeProgressMap] = useState<Map<number, WatchProgress>>(new Map());
+    const [latest, setLatest] = useState<MediaIdentifier | null>()
+
+    useEffect(() => {
+        const loadLatest = async () => {
+            setLatest(await getLatestTV(titleInfo.id));
+
+            setSeasonNumber(latest?.season ?? 1);
+        };
+
+        loadLatest();
+    }, [titleInfo.id]);
 
     useEffect(() => {
         const load = async () => {
-            const seasonData = await fetchSeasonInfo(titleInfo.id, seasonNumber);
+            const [seasonData, progress] = await Promise.all([
+                fetchSeasonInfo(titleInfo.id, seasonNumber),
+                getSeasonWatched(titleInfo.id, seasonNumber),
+            ]);
+
             setSeason(seasonData);
+            setEpisodeProgressMap(new Map(
+                progress
+                    .filter(item => item.episode != null)
+                    .map(item => [item.episode as number, item])
+            ));
         };
 
         load();
@@ -57,6 +80,10 @@ export default function TVDetails() {
 
                 <p className="detail-overview">{titleInfo.overview}</p>
 
+                {latest && <button className="continue-button" onClick={() => navigate(`/play/tv/${titleInfo.id}/${latest?.season}/${latest?.episode}`, { state: { continue: true } })} >
+                    Continue Watching
+                </button>}
+
                 <div className="episodes-header">
                     <h2>Episodes</h2>
 
@@ -91,7 +118,12 @@ export default function TVDetails() {
                         </div>
                     ) : (
                         season.episodes.map((e) => (
-                            <EpisodeCard key={e.id} episode={e} details={titleInfo} />
+                            <EpisodeCard
+                                key={e.id}
+                                episode={e}
+                                details={titleInfo}
+                                progress={episodeProgressMap.get(e.episode_number)}
+                            />
                         ))
                     )}
                 </div>

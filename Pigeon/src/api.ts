@@ -1,26 +1,19 @@
 import {
   type ApiMediaDetails,
-  type AvailableDownloads,
-  type AvailableDownloadsResponse,
-  GameImageType,
   type MediaDetails,
-  type MediaSearchResult,
+  type SearchResult,
   type SearchResponse,
   type SeasonDetails,
   type SeasonDetailsResponse,
-  type TokenResponse,
 
-  toAvailableDownloads,
   toMediaDetails,
-  toMediaSearchResult,
+  toSearchResult,
   toSeasonDetails,
 } from "./responses";
 
-import { CLIENT_ID, CLIENT_SECRET, MOVIE_DB_API_KEY } from "./secrets";
-
-
 const MEDIA_BASE_URL = "https://api.themoviedb.org/3";
 const SEARCH_ENDPOINT = "search/multi";
+const MOVIE_DB_API_KEY = "54e00466a09676df57ba51c4ca30b1a6"
 
 // ============================================================
 // Helpers
@@ -64,7 +57,7 @@ async function fetchJson<T>(
 
 export async function fetchSearchedMedia(
   query: string,
-): Promise<MediaSearchResult[]> {
+): Promise<SearchResult[]> {
   const response = await fetchJson<SearchResponse>(
     completeUrl(SEARCH_ENDPOINT, { query }),
   );
@@ -75,7 +68,7 @@ export async function fetchSearchedMedia(
         result.media_type === "movie" ||
         result.media_type === "tv",
     )
-    .map(toMediaSearchResult);
+    .map(toSearchResult);
 }
 
 
@@ -117,10 +110,3 @@ export async function fetchSeasonInfo(
   return toSeasonDetails(response);
 }
 
-export function gameImagePath(imageId: string | undefined, type: GameImageType, nullValue="noImage.jpg") {
-  if (imageId == undefined) {
-    return nullValue;
-  }
-
-  return `https://images.igdb.com/igdb/image/upload/t_${type}/${imageId}.jpg`
-}
