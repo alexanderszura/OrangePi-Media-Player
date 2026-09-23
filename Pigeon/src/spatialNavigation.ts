@@ -105,7 +105,7 @@ function focusDefaultTarget() {
   const preferred = main.querySelector<HTMLElement>("[data-autofocus]");
   const fallback = main.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
 
-  (preferred ?? fallback)?.focus();
+(preferred ?? fallback)?.focus();
 }
 
 export function useSpatialNavigation() {

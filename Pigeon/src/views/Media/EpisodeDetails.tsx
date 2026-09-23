@@ -57,7 +57,7 @@ export default function EpisodeDetails() {
 
                 <p className="detail-overview">{episodeInfo.overview}</p>
 
-                { details && <PlayButton type="tv" details={ details }/> }
+                { details && <PlayButton type="tv" details={ details } /> }
             </div>
         </div>
     );

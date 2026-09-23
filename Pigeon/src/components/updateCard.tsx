@@ -6,7 +6,7 @@ import {
   checkForUpdates,
   type AvailableUpdate,
 } from "../updater";
-import "./update-card.css";
+import "./updateCard.css";
 
 const UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
 

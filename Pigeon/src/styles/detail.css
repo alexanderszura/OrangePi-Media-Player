@@ -90,8 +90,8 @@
   gap: 10px;
   padding: 14px 28px;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 62, 120, 0.45);
-  background: linear-gradient(135deg, rgba(255, 62, 120, 0.22), rgba(255, 62, 120, 0.06));
+  border: 1px solid rgba(255, 157, 61, 0.45);
+  background: linear-gradient(135deg, rgba(255, 157, 61, 0.22), rgba(255, 157, 61, 0.06));
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 1rem;
@@ -101,14 +101,44 @@
 
 .play-button svg {
   font-size: 1.2em;
-  color: var(--play-soft);
+  color: var(--accent-soft);
 }
 
 .play-button:hover,
 .play-button:focus-visible {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-glow-play);
-  border-color: var(--play);
+  box-shadow: var(--shadow-glow-accent);
+  border-color: var(--accent);
+}
+
+.continue-button {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 14px 28px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 157, 61, 0.48);
+  background: linear-gradient(135deg, rgba(255, 157, 61, 0.24), rgba(255, 157, 61, 0.08));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.continue-button:hover,
+.continue-button:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(255, 157, 61, 0.32), rgba(255, 157, 61, 0.12));
+  box-shadow: var(--shadow-glow-accent);
+}
+
+.continue-button:active {
+  transform: translateY(0);
 }
 
 /* ---------------------------------------------------------
@@ -147,5 +177,9 @@
   .back-button {
     position: static;
     margin-bottom: 12px;
+  }
+
+  .continue-button {
+    width: 100%;
   }
 }
