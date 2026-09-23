@@ -1,4 +1,5 @@
 mod database;
+mod update;
 
 use std::sync::Mutex;
 use tauri::Manager;
@@ -31,7 +32,9 @@ pub fn run() {
             database::get_latest_tv,
             database::get_watched_tv_season,
             database::get_latest_unfinished,
-            database::get_latest_watched
+            database::get_latest_watched,
+            update::check_device_update,
+            update::update
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

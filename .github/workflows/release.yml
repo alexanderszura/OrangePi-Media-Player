@@ -5,6 +5,14 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag to build, for example v0.6.0"
+        required: true
+        type: string
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
 
 jobs:
   release:
@@ -69,6 +77,42 @@ jobs:
         working-directory: Pigeon
         run: npm ci
 
+      - name: Align app versions with release tag
+        shell: bash
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+
+          if [[ ! "${RELEASE_TAG}" =~ ^v[0-9]+(\.[0-9]+){2}([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag must look like v0.6.0; got ${RELEASE_TAG}" >&2
+            exit 1
+          fi
+
+          node <<'NODE'
+          const fs = require('fs');
+          const version = process.env.RELEASE_TAG.replace(/^v/, '');
+
+          for (const file of ['Pigeon/package.json', 'Pigeon/package-lock.json']) {
+            const json = JSON.parse(fs.readFileSync(file, 'utf8'));
+            json.version = version;
+
+            if (json.packages?.['']) {
+              json.packages[''].version = version;
+            }
+
+            fs.writeFileSync(file, `${JSON.stringify(json, null, 2)}\n`);
+          }
+
+          const tauriConfigPath = 'Pigeon/src-tauri/tauri.conf.json';
+          const tauriConfig = JSON.parse(fs.readFileSync(tauriConfigPath, 'utf8'));
+          tauriConfig.version = version;
+          fs.writeFileSync(tauriConfigPath, `${JSON.stringify(tauriConfig, null, 2)}\n`);
+
+          const cargoTomlPath = 'Pigeon/src-tauri/Cargo.toml';
+          const cargoToml = fs.readFileSync(cargoTomlPath, 'utf8')
+            .replace(/^version = ".*?"/m, `version = "${version}"`);
+          fs.writeFileSync(cargoTomlPath, cargoToml);
+          NODE
+
       - name: Create Rust secrets
         shell: bash
         run: |
@@ -91,59 +135,51 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: Pigeon
-          tagName: ${{ github.ref_name }}
-          releaseName: Release ${{ github.ref_name }}
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: Release ${{ env.RELEASE_TAG }}
           releaseBody: Automated release built via GitHub Actions.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
 
-
-  # --------------------------------------------------
-  # Web build
-  # --------------------------------------------------
-  web-build:
-    name: Build Web App
-
-    permissions:
-      contents: write
-
-    runs-on: ubuntu-22.04
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: Pigeon/package-lock.json
-
-      - name: Install npm packages
-        working-directory: Pigeon
-        run: npm ci
-
-      - name: Create TypeScript secrets
+      - name: Package device web and launcher assets
+        if: runner.os == 'Linux' && matrix.arch == 'arm64'
         shell: bash
         run: |
-          cat > Pigeon/src/secrets.ts <<'EOF'
-          ${{ secrets.TS_SECRETS }}
+          VERSION="${RELEASE_TAG#v}"
+          WEB_ASSET="Pigeon-web-${VERSION}.tar.gz"
+          LAUNCHER_ASSET="pigeon-launcher-${VERSION}.sh"
+
+          tar -czf "${WEB_ASSET}" -C Pigeon/dist .
+          cp launcher.sh "${LAUNCHER_ASSET}"
+          chmod +x "${LAUNCHER_ASSET}"
+
+          WEB_SHA="$(sha256sum "${WEB_ASSET}" | cut -d ' ' -f 1)"
+          LAUNCHER_SHA="$(sha256sum "${LAUNCHER_ASSET}" | cut -d ' ' -f 1)"
+
+          cat > device.json <<EOF
+          {
+            "version": "${VERSION}",
+            "web": {
+              "url": "https://github.com/alexanderszura/OrangePi-Media-Player/releases/download/${RELEASE_TAG}/${WEB_ASSET}",
+              "sha256": "${WEB_SHA}"
+            },
+            "launcher": {
+              "url": "https://github.com/alexanderszura/OrangePi-Media-Player/releases/download/${RELEASE_TAG}/${LAUNCHER_ASSET}",
+              "sha256": "${LAUNCHER_SHA}"
+            }
+          }
           EOF
 
-      - name: Build web app
-        working-directory: Pigeon
-        run: npm run build
-
-      - name: Create web app archive
-        working-directory: Pigeon
+      - name: Upload device release assets
+        if: runner.os == 'Linux' && matrix.arch == 'arm64'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tar -czf ../Pigeon-web-${{ github.ref_name }}.tar.gz dist
-
-      - name: Upload web app to release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: Pigeon-web-${{ github.ref_name }}.tar.gz
-          token: ${{ secrets.GITHUB_TOKEN }}
+          VERSION="${RELEASE_TAG#v}"
+          gh release upload "${RELEASE_TAG}" \
+            "Pigeon-web-${VERSION}.tar.gz" \
+            "pigeon-launcher-${VERSION}.sh" \
+            device.json \
+            --clobber

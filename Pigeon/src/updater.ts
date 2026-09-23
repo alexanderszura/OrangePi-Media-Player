@@ -1,9 +1,10 @@
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, Update } from "@tauri-apps/plugin-updater";
 import { getVersion } from '@tauri-apps/api/app';
-import { isTauri } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 
 let pendingUpdate: Update | null = null;
+let pendingDeviceUpdate = false;
 let activeCheck: Promise<AvailableUpdate | null> | null = null;
 
 export type AvailableUpdate = {
@@ -28,27 +29,57 @@ export async function checkForUpdates(): Promise<AvailableUpdate | null> {
 async function checkForUpdatesNow(): Promise<AvailableUpdate | null> {
   if (!isTauri()) return null;
 
+  let update: Update | null = null;
+
   try {
-    const update = await check();
+    update = await check();
+  } catch (error) {
+    console.error("Tauri update check failed:", error);
+  }
 
-    if (!update) {
-      console.log("No updates available");
-      pendingUpdate = null;
-      return null;
-    }
+  const deviceUpdate = await checkDeviceUpdate();
 
-    console.log(`Update available: ${update.version}`);
+  if (!update && !deviceUpdate) {
+    console.log("No updates available");
+    pendingUpdate = null;
+    pendingDeviceUpdate = false;
+    return null;
+  }
 
-    pendingUpdate = update;
+  pendingUpdate = update ?? null;
+  pendingDeviceUpdate = Boolean(deviceUpdate);
+
+  const currentVersion = update?.currentVersion ?? deviceUpdate?.currentVersion ?? "unknown";
+  const version = update?.version ?? deviceUpdate?.version ?? currentVersion;
+
+  console.log(`Update available: ${version}`);
+
+  return {
+    currentVersion,
+    version,
+  };
+}
+
+type DeviceUpdate = {
+  currentVersion: string;
+  version: string;
+};
+
+async function checkDeviceUpdate(): Promise<DeviceUpdate | null> {
+  try {
+    const update = await invoke<{ current_version: string; version: string } | null>(
+      "check_device_update"
+    );
+
+    if (!update) return null;
 
     return {
-      currentVersion: update.currentVersion,
+      currentVersion: update.current_version,
       version: update.version,
     };
 
   } catch (error) {
-    console.error("Update check failed:", error);
-
+    console.error("Device update check failed:", error);
     return null;
   }
 }
@@ -56,14 +87,20 @@ async function checkForUpdatesNow(): Promise<AvailableUpdate | null> {
 export async function attemptUpdateInstall(): Promise<boolean> {
   if (!isTauri()) return false;
 
-  if (!pendingUpdate) {
+  if (!pendingUpdate && !pendingDeviceUpdate) {
     return false;
   }
 
   try {
     console.log("Installing update...");
 
-    await pendingUpdate.downloadAndInstall();
+    if (pendingDeviceUpdate) {
+      await invoke("update");
+    }
+
+    if (pendingUpdate) {
+      await pendingUpdate.downloadAndInstall();
+    }
 
     await relaunch();
 
